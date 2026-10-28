@@ -40,6 +40,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .card.access b span { font-weight: 400; color: var(--muted); }
 .card.access b { color: var(--warn); font-weight: 600; }
 .card.access .pill { flex: none; height: 30px; background: var(--warn); color: #fff; }
+.card.access.upd { background: var(--blue-soft); } .card.access.upd b { color: var(--blue-text); } .card.access.upd .pill { background: var(--blue); }
 /* Страховка: если места мало, сжимается «Уйдёт в Jira», а «Открыть таймлайн» всегда видна. */
 .wrap > * { flex-shrink: 0; } .wrap > .card.jc { flex-shrink: 1; min-height: 0; overflow: hidden; }
 .l { color: var(--muted); font-size: 13px; }
@@ -210,6 +211,7 @@ function render() {
       <button class="rec ${st.paused ? "paused" : ""}" id="rec"><i></i>${pausedText}${CHEV}</button></div>
     ${(st.missing || []).slice(0, 1).map(m => `<div class="card access" title="${esc(m.text)}"><b>${esc(m.title)}${st.missing.length > 1 ? ` <span>и ещё ${st.missing.length - 1}</span>` : ""}</b>
       <button class="pill" id="access">${esc(m.button)}</button></div>`).join("")}
+    ${st.update?.newer && !(st.missing || []).length ? `<div class="card access upd"><b>Доступна версия ${esc(st.update.latest)}</b><button class="pill" id="updW">Обновить</button></div>` : ""}
     ${weekRow}
     <div class="card"><div class="l">${title}</div><div class="big">${hmm(p.total)}</div>
       ${day.blocks.length ? "" : `<div class="empty">Пока ничего не записано</div>`}
@@ -221,10 +223,11 @@ function render() {
         <span class="d">${hmm(g.sec)}</span>${g.sug ? `<button class="yes" data-acc="${i}" title="Записать в ${esc(g.sug.issue)}">${CHECK}</button>` : ""}
         <button class="no" data-no="${i}" title="Не та задача, личное или поделить">${DOTS}</button></div>`).join("")}
       ${ws.length > 2 ? `<div class="more">и ещё ${ws.length - 2} — в таймлайне</div>` : ""}</div>` : ""}
-    ${jiraCard(p, Math.max(1, 4 - Math.min(2, ws.length) - ((st.missing || []).length ? 1 : 0)))}
+    ${jiraCard(p, Math.max(1, 4 - Math.min(2, ws.length) - ((st.missing || []).length || st.update?.newer ? 1 : 0)))}
     <div class="foot"><button class="open" data-open="${S.today}">Открыть таймлайн<i>${ARROW}</i></button>
       <button class="circle" id="more" title="Ещё"><svg viewBox="0 0 20 20" fill="currentColor"><circle cx="4" cy="10" r="1.7"/><circle cx="10" cy="10" r="1.7"/><circle cx="16" cy="10" r="1.7"/></svg></button></div>`;
   $$("[data-open]").forEach(b => b.onclick = () => openDay(b.dataset.open));
+  $("#updW")?.addEventListener("click", () => native({ action: "update" }));
   if ($("#access")) $("#access").onclick = () => { const m = st.missing[0]; native({ action: m.action, bundle: m.bundle }); };
   $$("[data-day]").forEach(b => b.onclick = () => load(b.dataset.day));
   $$("[data-acc]").forEach(b => b.onclick = () => accept(ws[+b.dataset.acc]));

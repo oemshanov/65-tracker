@@ -777,7 +777,7 @@ final class MenuController: NSObject, NSMenuDelegate, NSApplicationDelegate, WKS
         st.state = showTime ? .on : .off
 
         menu.addItem(.separator())
-        _ = add("Выйти из Учёта времени", #selector(quit), key: "q")
+        _ = add("Выйти из 65 tracker", #selector(quit), key: "q")
     }
 
     func webView(frame: NSRect) -> WKWebView {
@@ -828,6 +828,9 @@ final class MenuController: NSObject, NSMenuDelegate, NSApplicationDelegate, WKS
         case "settings":
             popover.performClose(nil)
             openSettings()
+        case "update":
+            popover.performClose(nil)
+            showSettings(focus: "update-go")
         case "quit":
             quit()
         case "refresh":
@@ -957,12 +960,14 @@ final class MenuController: NSObject, NSMenuDelegate, NSApplicationDelegate, WKS
     @objc func syncIssues() { runTT(["issues", "--sync"]) }
 
     /// Настройки — окно в самом таймлайне (Jira, напоминание, доступы, версия), а не config.json в TextEdit.
-    @objc func openSettings() {
+    @objc func openSettings() { showSettings(focus: nil) }
+
+    func showSettings(focus: String?) {
         if window != nil, windowWeb?.url != nil {
             showWindow()
-            windowWeb?.evaluateJavaScript("window.ttSettings && window.ttSettings()")
+            windowWeb?.evaluateJavaScript("window.ttSettings && window.ttSettings(\(focus.map { "'\($0)'" } ?? ""))")
         } else {
-            openTimeline(date: nil, hash: "#settings")
+            openTimeline(date: nil, hash: focus == "update-go" ? "#update" : "#settings")
         }
     }
 
@@ -1037,6 +1042,12 @@ log("ttcollect started, interval=\(collector.cfg.interval)s")
 let menuController = MenuController(collector: collector)
 app.delegate = menuController
 collector.tick()
+// Приложение только что обновилось само (кнопка «Обновить» в настройках) — открываем окно, где её нажали.
+let reopenFlag = supportDir.appendingPathComponent("update/reopen")
+if FileManager.default.fileExists(atPath: reopenFlag.path) {
+    try? FileManager.default.removeItem(at: reopenFlag)
+    DispatchQueue.main.async { menuController.openTimeline(date: nil) }
+}
 let timer = Timer(timeInterval: collector.cfg.interval, repeats: true) { _ in collector.tick() }
 timer.tolerance = collector.cfg.interval * 0.2
 RunLoop.main.add(timer, forMode: .common)

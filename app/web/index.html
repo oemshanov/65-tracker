@@ -435,6 +435,9 @@ dialog.set h2 { font-size: 28px; margin: 0; }
 .set .mut { color: var(--muted); font-size: 13px; flex: none; } .set .path { max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .set a.txt, .set a.pill { display: inline-flex; align-items: center; text-decoration: none; flex: none; }
 .perm a.pill { display: inline-flex; align-items: center; text-decoration: none; }
+.perm.upd { background: var(--blue-soft); } .perm.upd b { color: var(--blue-text); } .perm.upd .pill { background: var(--blue); }
+.set .unotes { margin-top: 6px; padding: 12px 14px; border-radius: 12px; background: var(--well); font-size: 13px; line-height: 1.45; color: var(--muted); white-space: pre-line; max-height: 240px; overflow: auto; }
+.set .unotes b { display: block; margin-bottom: 2px; font-weight: 600; color: var(--ink); }
 .set .sbtns { display: flex; gap: 8px; margin-top: 6px; }
 .set .snote { font-size: 12px; color: var(--soft); margin: 6px 0 0; } .set .snote.err { color: var(--warn); }
 .set .aibar { height: 6px; border-radius: 999px; background: var(--well-2); overflow: hidden; margin-top: 4px; }
@@ -699,13 +702,18 @@ const native = msg => window.webkit?.messageHandlers?.tt?.postMessage(msg);
 // Каких доступов нет — показываем сразу, при каждом возвращении в окно проверяем снова.
 async function renderPerms() {
   if (window.webkit?.messageHandlers?.tt) { native({ action: "refresh" }); await new Promise(r => setTimeout(r, 300)); }  // приложение перепроверит доступы
-  let miss = []; try { const st = await api("/api/status"); miss = st.missing || [];
+  let miss = [], upd = null; try { const st = await api("/api/status"); miss = st.missing || []; upd = st.update;
     if (S.build && st.build && st.build !== S.build) return location.reload();  // приложение обновилось — подхватываем новую страницу
     S.build = st.build; } catch (e) {}
   const nat = !!window.webkit?.messageHandlers?.tt;
   $("#perms").innerHTML = miss.map((m, i) => `<div class="perm"><div><b>${esc(m.title)}</b>${esc(m.text)}</div>
     ${nat ? `<button class="pill" data-perm="${i}">${esc(m.button)}</button>` : `<a class="pill" href="${PANE[m.action]}">${esc(m.button)}</a>`}</div>`).join("");
   $$("[data-perm]").forEach(b => b.onclick = () => { const m = miss[+b.dataset.perm]; native({ action: m.action, bundle: m.bundle }); });
+  if (upd?.newer && nat) { $("#perms").insertAdjacentHTML("beforeend", `<div class="perm upd"><div><b>Доступна версия ${esc(upd.latest)}</b>Обновится за минуту, данные и доступы сохранятся</div>
+    <button class="txt sm" id="updMore">Что нового</button><button class="pill" id="updNow">Обновить</button></div>`);
+    $("#updMore").onclick = () => openSettings("update"); $("#updNow").onclick = () => openSettings("update-go"); }
+  if (upd?.done && nat && !S.doneShown) { S.doneShown = true; api("/api/update/ack", {}).catch(() => {});
+    upd.done.error ? toast(`Не удалось обновить: ${upd.done.error}. Скачайте новую версию в настройках`, true) : toast(`Обновлено до версии ${upd.done.to}`); }
 }
 addEventListener("focus", renderPerms);
 // Пока плашка висит — проверяем каждые 2 с, чтобы она ушла сразу после выдачи доступа.
@@ -872,9 +880,12 @@ function renderLeft() {
 function waitCard(g) {
   const pr = proposal(g), n = g.blocks.filter(b => !b.issue && !b.skip && !b.split);
   const why = pr ? shortWhy(pr.why) + (pr.blocks && pr.blocks.length < n.length ? ` · ${pr.blocks.length} из ${n.length} отрезков` : "") : "";
+  // Одна тема из разных программ (макет в Figma и сессия Claude по тому же проекту) — называем и остальные, иначе их время «пропадает».
+  const also = [...new Set(g.others.filter(o => o.seconds >= 60).map(o => o.label.replace(/ — .*$/, "")))];
+  const meta = [also.length ? "вместе с " + also.join(", ") : "", n.length > 1 ? `${n.length} ${plural(n.length, "раз", "раза", "раз")} за день` : ""].filter(Boolean).join(" · ");
   return `<div class="wcard ${S.sel === g.key ? "sel" : ""}" data-k="${esc(g.key)}">
     <div class="wtop" draggable="true" title="Потяните на задачу в «Разложено» или в «Уйдёт в Jira»">${icon(g.icon, g.label)}<div class="t"><div class="name">${esc(g.label.replace(/^Claude Code: /, ""))}</div>
-      ${n.length > 1 ? `<div class="meta">${n.length} ${plural(n.length, "раз", "раза", "раз")} за день</div>` : ""}</div></div>
+      ${meta ? `<div class="meta">${esc(meta)}</div>` : ""}</div></div>
     <div class="dur">${hmm(g.openSeconds)}</div>
     <div class="sugg">${pr ? `<button class="chip" data-act="change" style="--p:${pastel(pr.issue)}" title="${pr.ai ? "Подсказала нейросеть" : "Подсказка"}: ${esc(why)}. Нажмите, чтобы выбрать другую задачу">${pr.ai ? `<i class="spark">${SPARK}</i>` : ""}<b>${esc(pr.issue)}</b><span>${esc(summary(pr.issue))}</span><i class="cv">${CHEV}</i></button>
       <button class="yes" data-act="hint">${CHECK}Да, сюда</button>` : `<input list="issueList" class="solo" placeholder="Найти задачу в Jira" spellcheck="false">`}
@@ -1188,9 +1199,10 @@ async function openSettings(focus) {
     <section><h3>Доступы</h3><div id="sPerm">${permRows(pm)}</div></section>
     <section id="sAIs"><h3>Подбор задач нейросетью</h3><div id="sAI">${aiRows(st.local)}</div></section>
     <section><h3>Хранилище</h3><div id="sStore">${storeRows(st.storage)}</div></section>
-    <section><h3>О приложении</h3>
+    <section id="sUpd"><h3>О приложении</h3>
       <div class="srow" title="Сборка от ${esc(v.app_date || "—")}, интерфейс от ${esc(v.web || "—")}"><span>Версия</span><span class="mut">${esc(v.app || "—")}${v.build ? ` (${esc(v.build)})` : ""}</span></div>
-      <div id="upd"><div class="sbtns"><button class="txt sm" id="updBtn">Проверить обновления</button></div></div></section>`;
+      <label class="srow sw"><span>Проверять обновления раз в день<small>Спрашивает у GitHub номер последней версии, о вас ничего не передаёт</small></span><input type="checkbox" id="uAuto" ${st.update?.auto !== false ? "checked" : ""}></label>
+      <div id="upd">${updRows(st.update || {})}</div></section>`;
   const B = $("#setBody");
   const saveRem = () => api("/api/settings", { reminder_enabled: $("#rOn", B).checked, reminder_time: $("#rTime", B).value.trim(),
     reminder_days: $$(".dch.on", B).map(x => x.dataset.d), reminder_style: $(".seg .on", B).dataset.st }).catch(e => toast(e.message, true));
@@ -1199,7 +1211,10 @@ async function openSettings(focus) {
   $$(".dch", B).forEach(b => b.onclick = () => { b.classList.toggle("on"); saveRem(); });
   $$(".seg button", B).forEach(b => b.onclick = () => { $$(".seg button", B).forEach(x => x.classList.toggle("on", x === b));
     b.closest(".srow").querySelector("small").textContent = b.dataset.st === "notification" ? "Уведомление в углу экрана, не отвлекает" : "Окно с кнопкой «Разобрать» — сложно пропустить"; saveRem(); });
-  bindPermRows(); bindAI(); bindStore(); bindUpdate();
+  bindPermRows(); bindAI(); bindStore(); renderUpd(st.update || {});
+  $("#uAuto", B).onchange = e => api("/api/update/auto", { on: e.currentTarget.checked }).catch(er => toast(er.message, true));
+  if (focus === "update" || focus === "update-go") { $("#sUpd").scrollIntoView({ block: "center" });
+    if (focus === "update-go" && st.update?.newer && st.update?.can_install && !updBusy(st.update)) startUpd(); }
   if (focus === "ai") { const sec = $("#sAIs"); sec.scrollIntoView({ block: "center" }); sec.classList.add("hl"); setTimeout(() => sec.classList.remove("hl"), 1600); }
   $("#sToken", B).onclick = () => { d.close(); openConnect(); };
   $("#sSync", B)?.addEventListener("click", e => busy(e.currentTarget, async () => { const r = await api("/api/issues/sync", {}); await loadIssues(); toast(`Загружено задач: ${r.synced}`); openSettings(); }, "Обновляю…"));
@@ -1210,17 +1225,31 @@ $("#setClose").onclick = () => $("#settings").close();
 // Клик мимо окна настроек (по затемнённому фону) — закрыть.
 $("#settings").addEventListener("click", e => { if (e.target === e.currentTarget) e.currentTarget.close(); });
 
-// Обновления: только по кнопке — спрашиваем у GitHub последний релиз и, если он новее, даём ссылку на dmg.
-function bindUpdate() {
-  $("#updBtn")?.addEventListener("click", e => busy(e.currentTarget, async () => {
-    const u = await api("/api/update/check"), box = $("#upd");
-    if (u.error) box.innerHTML = `<p class="snote err">Не удалось проверить: ${esc(u.error)}</p><div class="sbtns"><button class="txt sm" id="updBtn">Проверить ещё раз</button></div>`;
-    else if (u.newer) box.innerHTML = `<div class="srow"><span>Доступна версия ${esc(u.latest)}<small>Скачайте, откройте и замените «65 tracker» в «Программах». Данные и настройки сохранятся</small></span>
-        <a class="pill sm blue" href="${esc(u.url)}" target="_blank" rel="noopener">Скачать</a></div>${u.notes ? `<p class="snote" style="white-space:pre-line">${esc(u.notes)}</p>` : ""}`;
-    else box.innerHTML = `<p class="snote">Установлена последняя версия${u.latest ? ` (${esc(u.latest)})` : ""}</p><div class="sbtns"><button class="txt sm" id="updBtn">Проверить ещё раз</button></div>`;
-    bindUpdate();
-  }, "Проверяю…"));
+// Обновления: кнопка «Обновить» скачивает новую версию с GitHub, проверяет подпись и перезапускает приложение.
+const updBusy = u => ["download", "verify", "restart"].includes(u.job?.stage);
+function updRows(u) {
+  const j = u.job || {}, manual = u.dmg || u.page;
+  if (j.stage === "download") return `<div class="srow"><span>Скачиваю версию ${esc(j.version || u.latest || "")}… ${j.pct || 0}%</span></div><div class="aibar"><i style="width:${j.pct || 0}%"></i></div>`;
+  if (j.stage === "verify") return `<div class="srow"><span>Проверяю подпись новой версии…</span></div><div class="aibar"><i style="width:100%"></i></div>`;
+  if (j.stage === "restart") return `<div class="srow"><span>Устанавливаю — приложение перезапустится</span></div><div class="aibar"><i style="width:100%"></i></div>`;
+  const err = j.stage === "error" ? `<p class="snote err">Не удалось обновить: ${esc(j.error || "")}</p>` : u.error ? `<p class="snote err">Не удалось проверить: ${esc(u.error)}</p>` : "";
+  if (u.newer) return `${err}<div class="srow"><span>Доступна версия ${esc(u.latest)}<small>${u.can_install ? "Скачается и перезапустится само. Данные, настройки и доступы сохранятся"
+      : "Скачайте, откройте и замените «65 tracker» в «Программах». Данные и настройки сохранятся"}</small></span>
+      ${u.can_install ? `<button class="pill sm blue" id="updGo">${j.stage === "error" ? "Повторить" : "Обновить"}</button>` : `<a class="pill sm blue" href="${esc(manual || "")}" target="_blank" rel="noopener">Скачать</a>`}</div>
+    ${u.notes ? `<div class="unotes"><b>Что нового</b>${esc(u.notes)}</div>` : ""}
+    ${u.can_install && manual ? `<div class="sbtns"><a class="txt sm" href="${esc(manual)}" target="_blank" rel="noopener">Скачать вручную</a></div>` : ""}`;
+  return `${err}${u.latest && !err ? `<p class="snote">Установлена последняя версия</p>` : ""}<div class="sbtns"><button class="txt sm" id="updBtn">Проверить обновления</button></div>`;
 }
+let updPoll = null;
+function renderUpd(u) {
+  if (!$("#upd")) return; $("#upd").innerHTML = updRows(u);
+  $("#updBtn")?.addEventListener("click", e => busy(e.currentTarget, async () => renderUpd(await api("/api/update/check")), "Проверяю…"));
+  $("#updGo")?.addEventListener("click", startUpd);
+  clearTimeout(updPoll);
+  // Пока качается и проверяется — обновляем проценты. На перезапуске окно закроется вместе с приложением.
+  if (updBusy(u) && u.job.stage !== "restart") updPoll = setTimeout(async () => { try { renderUpd(await api("/api/update/state")); } catch (e) {} }, 700);
+}
+async function startUpd() { try { await api("/api/update/install", {}); renderUpd(await api("/api/update/state")); } catch (e) { toast(e.message, true); } }
 // Хранилище: история записи и кеш. Кеш (векторы нейросети, иконки, журналы) собирается заново сам.
 const mb = b => b < 1048576 ? `${Math.max(1, Math.round(b / 1024))} КБ` : `${(b / 1048576).toFixed(b < 10485760 ? 1 : 0).replace(".", ",")} МБ`;
 function storeRows(sg) {
@@ -1292,6 +1321,7 @@ setInterval(async () => {
 // Настройки открыли из меню приложения или панели 65.
 window.ttSettings = openSettings;
 if (location.hash === "#settings") setTimeout(openSettings, 300);
+if (location.hash === "#update") setTimeout(() => openSettings("update-go"), 300);
 $("#cCancel").onclick = () => $("#connect").close();
 $("#cOk").onclick = e => busy(e.currentTarget, async () => { $("#cErr").textContent = "";
   // Проверка токена — секунда, а загрузка всех задач из Jira может занять до минуты: говорим, что происходит.

@@ -95,8 +95,11 @@ cat > "$WORK/stage/Как установить.txt" <<'TXT'
    Нужен Personal Access Token (Jira → Профиль → Personal Access Tokens).
    Токен хранится в Связке ключей macOS.
 
-Все данные остаются на вашем Маке. В сеть трекер ходит только в вашу Jira.
+Все данные остаются на вашем Маке. В сеть трекер ходит только в вашу Jira
+и раз в день на GitHub — узнать, вышла ли новая версия (выключается в настройках).
+Новые версии ставятся кнопкой «Обновить» в самом приложении.
 TXT
-rm -f "$DIST/$NAME.dmg"
-hdiutil create -quiet -volname "$NAME" -srcfolder "$WORK/stage" -ov -format UDZO "$DIST/$NAME.dmg"
-say "Готово: $DIST/$NAME.dmg ($(du -h "$DIST/$NAME.dmg" | cut -f1)), версия $STAMP"
+OUT="${OUT:-$DIST/$NAME.dmg}"   # OUT=… ./build_dmg.sh — положить образ в другое место (тестовые сборки)
+rm -f "$OUT"
+hdiutil create -quiet -volname "$NAME" -srcfolder "$WORK/stage" -ov -format UDZO "$OUT"
+say "Готово: $OUT ($(du -h "$OUT" | cut -f1)), версия $STAMP"

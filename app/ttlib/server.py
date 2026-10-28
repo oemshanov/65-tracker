@@ -13,7 +13,7 @@ import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import config, db, icons, jira, local_ai, report, suggest
+from . import config, db, icons, jira, local_ai, report, suggest, update
 from .remind import day_needs_review
 from .segment import build_day, parse_date, parse_dur, propose
 
@@ -72,8 +72,10 @@ def recording_status(cfg):
         until = -1 if v < 0 else (v if v > time.time() else None)
     except (OSError, ValueError):
         pass
+    u = update.state(cfg)
     return {"running": collector_running(), "paused": until is not None, "paused_until": until,
-            "missing": missing_permissions(cfg), "build": web_build()}
+            "missing": missing_permissions(cfg), "build": web_build(),
+            "update": {"newer": u["newer"], "latest": u["latest"], "done": u.get("done")}}
 
 
 def _read_permissions():
@@ -169,33 +171,6 @@ def jira_avatar(cfg):
         return out
     except Exception:
         return out if os.path.exists(out) else None
-
-
-def _ver(v):
-    return tuple(int(x) for x in re.findall(r"\d+", v or "")[:3]) or (0,)
-
-
-def check_update(cfg):
-    """Последний релиз на GitHub против установленной версии. Вызывается только по кнопке «Проверить обновления»."""
-    repo = (cfg.get("updates") or {}).get("repo")
-    cur = app_version().get("app") or "0"
-    if not repo:
-        return {"current": cur, "error": "Не указан репозиторий с обновлениями"}
-    req = urllib.request.Request("https://api.github.com/repos/%s/releases/latest" % repo,
-                                 headers={"Accept": "application/vnd.github+json", "User-Agent": "65-tracker"})
-    try:
-        with urllib.request.urlopen(req, timeout=10) as r:
-            rel = json.load(r)
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
-            return {"current": cur, "latest": None, "newer": False}
-        return {"current": cur, "error": "GitHub ответил %s" % e.code}
-    except (OSError, ValueError):
-        return {"current": cur, "error": "Нет связи с GitHub"}
-    latest = (rel.get("tag_name") or "").lstrip("vV")
-    dmg = next((a.get("browser_download_url") for a in rel.get("assets") or [] if a.get("name", "").endswith(".dmg")), None)
-    return {"current": cur, "latest": latest, "newer": _ver(latest) > _ver(cur),
-            "url": dmg or rel.get("html_url"), "page": rel.get("html_url"), "notes": (rel.get("body") or "")[:600]}
 
 
 def web_build():
@@ -364,10 +339,14 @@ class Handler(BaseHTTPRequestHandler):
                     "local": local_ai.status(cfg),
                     "permissions": _read_permissions(),
                     "version": app_version(),
+                    "update": dict(update.state(cfg, background=False), can_install=update.can_install()),
                     "storage": storage(conn),
                 })
             if u.path == "/api/update/check":
-                return self._json(check_update(cfg))
+                c = update.check(cfg)
+                return self._json(dict(update.state(cfg, background=False), error=c.get("error"), can_install=update.can_install()))
+            if u.path == "/api/update/state":
+                return self._json(dict(update.state(cfg, background=False), can_install=update.can_install()))
             if u.path == "/api/local/status":
                 return self._json(local_ai.status(cfg))
             if u.path == "/api/report":
@@ -502,6 +481,15 @@ class Handler(BaseHTTPRequestHandler):
                 from .remind import install_agents
                 install_agents(config.load(), collector=False)
                 return self._json({"ok": True})
+            if path == "/api/update/install":
+                update.install_async(cfg, os.getpid())
+                return self._json(update.state(cfg, background=False))
+            if path == "/api/update/ack":
+                update.ack()
+                return self._json({"ok": True})
+            if path == "/api/update/auto":
+                config.save_user({"updates": {"auto": bool(body.get("on"))}})
+                return self._json(update.state(config.load(), background=False))
             if path == "/api/cache/clear":
                 return self._json(clear_cache(conn))
             if path == "/api/local/install":
