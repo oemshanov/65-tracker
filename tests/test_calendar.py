@@ -19,7 +19,7 @@ for d in (d_off, d_on):
     conn.executemany("INSERT INTO calendar_events VALUES(?,?,?,?,?,?,?,?)", [
         ("d%s" % d, T(10, 30), T(11, 0), "Альфа - Дейлик", "w", None, 0, 5),
         ("s%s" % d, T(12, 30), T(13, 30), "Синхронизация по дизайну", "w", None, 0, 4),
-        ("c%s" % d, T(14, 0), T(14, 20), "Coffee Break☕️", "w", None, 0, 9),
+        ("c%s" % d, T(14, 0), T(14, 20), "Кофе-брейк", "w", None, 0, 9),
         ("e%s" % d, T(19, 0), T(19, 30), "Вечерний созвон", "w", None, 0, 2)])
 # 15.10: трекер работал 10:00–15:00, ноутбук простаивал во время встреч.
 T = lambda h, m: time.mktime((d_on.year, d_on.month, d_on.day, h, m, 0, 0, 0, -1))  # noqa: E731
@@ -40,6 +40,6 @@ for b in on["blocks"]:
                                       b["skip"], b["label"]))
 labels = {b["label"]: b for b in on["blocks"]}
 assert "Альфа - Дейлик" in labels and "Синхронизация по дизайну" in labels, "встречи внутри рабочего дня — засчитаны"
-assert labels["Coffee Break☕️"]["skip"], "перерыв — личное"
+assert labels["Кофе-брейк"]["skip"], "перерыв — личное"
 assert "Вечерний созвон" not in labels, "после выключения трекера календарь не добавляет"
 print("OK")
