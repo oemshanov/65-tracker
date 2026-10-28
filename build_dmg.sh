@@ -68,7 +68,7 @@ STAMP="$VERSION $(cd "$APP/Contents/Resources/app" && find . -type f | sort | xa
 print "$STAMP" > "$APP/Contents/Resources/app/.build"   # по нему приложение понимает, что код обновился
 
 # 4. Подпись: сертификат «65 tracker», если есть, иначе разовая.
-if security find-identity -v -p codesigning 2>/dev/null | grep -q '"65 tracker"'; then SIGN="65 tracker"; else SIGN="-"; fi
+if security find-identity -p codesigning 2>/dev/null | grep -q '"65 tracker"'; then SIGN="65 tracker"; else SIGN="-"; fi
 say "Подписываю (${SIGN/-/разовая подпись})…"
 find "$APP/Contents/Resources/python" -type f \( -perm -u+x -o -name '*.dylib' -o -name '*.so' \) -print0 |
   xargs -0 -n 50 codesign --force --sign "$SIGN" --timestamp=none >/dev/null 2>&1 || true

@@ -46,7 +46,7 @@ if [[ ! -x "$APP/Contents/MacOS/ttcollect" || "$(cat "$DEST/.collector.sha" 2>/d
   cp "$SRC/collector/icon/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
   # Есть постоянный сертификат «65 tracker» (Связка ключей → Ассистент сертификатов → «Подпись кода») —
   # подписываем им: тогда доступ к окнам переживает пересборки. Иначе — разовая подпись, доступ слетает.
-  if security find-identity -v -p codesigning 2>/dev/null | grep -q '"65 tracker"'; then
+  if security find-identity -p codesigning 2>/dev/null | grep -q '"65 tracker"'; then
     codesign --force --sign "65 tracker" --identifier com.timetracker.collector "$APP" >/dev/null 2>&1
   else
     codesign --force --sign - --identifier com.timetracker.collector "$APP" >/dev/null 2>&1
