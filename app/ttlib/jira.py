@@ -251,7 +251,7 @@ def push_day(conn, cfg, date, dry_run=False, only=None):
     proposal = propose(conn, cfg, build_day(conn, cfg, date))
     d0 = dt.datetime.combine(date, dt.time(hour=10)).timestamp()
     for w in proposal["worklogs"]:
-        if only and w["issue"] not in only:
+        if only and w["issue"] not in only and w["id"] not in only:
             continue
         if w["status"] in ("pushed", "in_jira") or not w["seconds"]:
             results.append({"issue": w["issue"], "action": "skip", "status": w["status"]})
@@ -267,14 +267,14 @@ def push_day(conn, cfg, date, dry_run=False, only=None):
             else:
                 wid = jira.add_worklog(w["issue"], started, w["seconds"], w["comment"])
             conn.execute(
-                "INSERT INTO drafts(date, issue, jira_id, pushed_seconds, pushed_comment, pushed_at) "
-                "VALUES(?,?,?,?,?,?) ON CONFLICT(date, issue) DO UPDATE SET jira_id=excluded.jira_id, "
+                "INSERT INTO drafts(date, issue, part, jira_id, pushed_seconds, pushed_comment, pushed_at) "
+                "VALUES(?,?,?,?,?,?,?) ON CONFLICT(date, issue, part) DO UPDATE SET jira_id=excluded.jira_id, "
                 "pushed_seconds=excluded.pushed_seconds, pushed_comment=excluded.pushed_comment, "
                 "pushed_at=excluded.pushed_at",
-                (date.isoformat(), w["issue"], wid, w["seconds"], w["comment"], time.time()))
+                (date.isoformat(), w["issue"], w["part"], wid, w["seconds"], w["comment"], time.time()))
             # Фиксируем текущие значения, чтобы авто-пересчёт не менял уже отправленное.
-            conn.execute("UPDATE drafts SET seconds=?, comment=? WHERE date=? AND issue=?",
-                         (w["seconds"], w["comment"], date.isoformat(), w["issue"]))
+            conn.execute("UPDATE drafts SET seconds=?, comment=? WHERE date=? AND issue=? AND part=?",
+                         (w["seconds"], w["comment"], date.isoformat(), w["issue"], w["part"]))
             conn.commit()
             results.append({"issue": w["issue"], "action": action, "seconds": w["seconds"], "id": wid})
         except JiraError as e:

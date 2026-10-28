@@ -497,10 +497,15 @@ def _round_largest_remainder(values, unit):
 
 
 def propose(conn, cfg, day):
-    """Черновики ворклогов по задачам: авто-расчёт + ручные правки из drafts."""
+    """Черновики ворклогов: по записи на задачу (или несколько, если вы вынесли часть активностей
+    отдельной записью) — авто-расчёт + ручные правки из drafts."""
     unit = cfg["worklog"]["round_min"] * 60
     min_sec = cfg["worklog"]["min_min"] * 60
-    per = defaultdict(lambda: {"seconds": 0, "start": None, "labels": defaultdict(int)})
+    parts = {(r["issue"], r["context_key"]): r["part"]
+             for r in conn.execute("SELECT * FROM parts WHERE date=?", (day["date"],))}
+    # Ключ записи — (задача, part); part пустой у общей записи задачи.
+    per = defaultdict(lambda: {"seconds": 0, "start": None, "labels": defaultdict(int), "sources": defaultdict(float),
+                               "names": defaultdict(float), "icons": {}, "split": 0, "folded": 0})
     unassigned = 0
     skipped = 0
     split = 0
@@ -514,10 +519,21 @@ def propose(conn, cfg, day):
         if not b["issue"]:
             unassigned += b["seconds"]
             continue
-        p = per[b["issue"]]
-        p["seconds"] += b["seconds"]
-        p["start"] = b["start"] if p["start"] is None else min(p["start"], b["start"])
-        for c in b["contexts"]:
+        # Блок назван по главному окну, но внутри него бывает и другая работа (полчаса Claude Code посреди
+        # «Figma: Альфа»). Поэтому время блока делим по окнам: вынесенное отдельной записью уходит туда
+        # своей долей, остальное — в запись главного окна блока.
+        ck = b.get("context_key") or b["id"]
+        home = parts.get((b["issue"], ck), "")
+        ctx_sec = sum(c["seconds"] for c in b["contexts"]) or 1
+        for c in b["contexts"] or [{"key": ck, "label": b["label"], "kind": b["kind"], "seconds": 1}]:
+            g = c.get("group") or c.get("key") or ck
+            p = per[(b["issue"], parts.get((b["issue"], g), home))]
+            share = b["seconds"] * c["seconds"] / ctx_sec if b["contexts"] else b["seconds"]
+            p["seconds"] += share
+            p["start"] = b["start"] if p["start"] is None else min(p["start"], b["start"])
+            p["sources"][g] += share
+            p["names"][c.get("label") or ""] += share
+            p["icons"].setdefault(g, (c.get("label") or "", c.get("icon")))
             part = comment_part(c)
             # Чужое (экран Альфы, мелькнувший внутри блока Acme) в комментарий этой задачи не берём.
             if part and c.get("resolved_issue") in (None, b["issue"]):
@@ -530,54 +546,76 @@ def propose(conn, cfg, day):
             v["seconds"] += v["split"]
     # Задача, назначенная вами или правилом, — конкретная работа: логируется отдельно, сколько бы ни длилась.
     # Растворяются только мелькания короче min_min (случайно открыли окно с ключом задачи на минуту).
-    small = sorted((k for k, v in per.items() if v["seconds"] < min_sec), key=lambda k: per[k]["seconds"])
-    big = [k for k in per if k not in small]
+    by_issue = defaultdict(float)
+    for (k, _), v in per.items():
+        by_issue[k] += v["seconds"]
+    small = sorted((k for k in by_issue if by_issue[k] < min_sec), key=lambda k: by_issue[k])
+    big = [k for k in by_issue if k not in small]
     if not big and small:
         big = [small.pop()]
     folded = []
     for k in small:
-        sec = per[k]["seconds"]
-        folded.append({"issue": k, "seconds": int(sec), "into": None})
-        base = sum(per[x]["seconds"] for x in big)
-        for x in big:
-            per[x]["seconds"] += sec * per[x]["seconds"] / base
-        per[k]["seconds"] = 0
-    raw = {k: v["seconds"] for k, v in per.items() if k in big}
+        folded.append({"issue": k, "seconds": int(by_issue[k]), "into": None})
+        dst = [x for x in per if x[0] in big]
+        base = sum(per[x]["seconds"] for x in dst)
+        for x in dst:
+            add = by_issue[k] * per[x]["seconds"] / base
+            per[x]["seconds"] += add
+            per[x]["folded"] += add
+        for x in per:
+            if x[0] == k:
+                per[x]["seconds"] = 0
+    raw = {x: v["seconds"] for x, v in per.items() if x[0] in big}
     rounded = _round_largest_remainder(raw, unit)
-    for k in raw:  # 15 минут дейли не превращаются в 0 при округлении
-        rounded[k] = max(rounded.get(k, 0), unit)
+    for x in raw:  # 15 минут дейли не превращаются в 0 при округлении
+        rounded[x] = max(rounded.get(x, 0), unit)
 
+    # Тема — окна одного проекта («Figma: Альфа» + сессия Claude «alpha»): в списке источников они одной строкой.
+    themes = {k: b["theme"] for b in day["blocks"] if b.get("theme") for k in b["theme"][len("theme:"):].split("+")}
     issues = {r["key"]: dict(r) for r in conn.execute("SELECT * FROM issues")}
-    drafts = {r["issue"]: dict(r) for r in conn.execute("SELECT * FROM drafts WHERE date=?", (day["date"],))}
+    drafts = {(r["issue"], r["part"]): dict(r) for r in conn.execute("SELECT * FROM drafts WHERE date=?",
+                                                                      (day["date"],))}
     logged = {r["issue"]: r["seconds"] for r in conn.execute("SELECT * FROM jira_logged WHERE date=?",
                                                                 (day["date"],))}
     rows = []
-    for key in sorted(set(rounded) | set(drafts), key=lambda k: -(rounded.get(k) or 0)):
-        p = per.get(key)
-        auto_secs = rounded.get(key, 0)
+    for x in set(rounded) | set(drafts):
+        key, part = x
+        p = per.get(x)
+        auto_secs = rounded.get(x, 0)
         labels = sorted(p["labels"].items(), key=lambda kv: -kv[1]) if p else []
         # В комментарий — только то, что заметно по времени, без минутных переключений.
         auto_comment = build_comment(labels, (issues.get(key) or {}).get("summary"))
-        d = drafts.get(key) or {}
+        d = drafts.get(x) or {}
         secs = d.get("seconds") if d.get("seconds") is not None else auto_secs
         comment = d.get("comment") if d.get("comment") is not None else auto_comment
         if not secs and not d.get("jira_id"):
             continue
-        status = "draft"
-        if d.get("jira_id"):
-            status = "pushed" if (d.get("pushed_seconds") == secs and d.get("pushed_comment") == comment) \
-                else "changed"
-        elif logged.get(key, 0) >= secs * 0.9 and secs:
-            status = "in_jira"
         iss = issues.get(key) or {}
         rows.append({
-            "issue": key, "summary": iss.get("summary"), "project": iss.get("project") or key.split("-")[0],
+            "issue": key, "part": part, "id": key + ("|" + part if part else ""),
+            "part_label": max(p["names"], key=p["names"].get) if p and part else None,
+            "summary": iss.get("summary"), "project": iss.get("project") or key.split("-")[0],
             "seconds": int(secs), "auto_seconds": int(auto_secs), "raw_seconds": int(p["seconds"]) if p else 0,
             "comment": comment, "auto_comment": auto_comment, "edited": bool(d.get("seconds") is not None
                                                                               or d.get("comment") is not None),
-            "start": p["start"] if p else None, "status": status, "jira_id": d.get("jira_id"),
-            "jira_logged": logged.get(key, 0),
+            "start": p["start"] if p else None, "jira_id": d.get("jira_id"), "jira_logged": logged.get(key, 0),
+            # Из чего сложилось время: активности (ключ → секунды) и добавки «поделить» / мелкие задачи.
+            "sources": _sources(p, themes) if p else [], "split_seconds": int(p["split"]) if p else 0, "folded_seconds": int(p["folded"]) if p else 0,
+            "_d": d,
         })
+    total_by_issue = defaultdict(int)
+    for r in rows:
+        total_by_issue[r["issue"]] += r["seconds"]
+    for r in rows:
+        d = r.pop("_d")
+        if d.get("jira_id"):
+            r["status"] = "pushed" if (d.get("pushed_seconds") == r["seconds"] and d.get("pushed_comment") == r["comment"]) \
+                else "changed"
+        else:  # Внесено руками мимо трекера: сверяем со всей задачей за день, а не с отдельной записью.
+            tot = total_by_issue[r["issue"]]
+            r["status"] = "in_jira" if logged.get(r["issue"], 0) >= tot * 0.9 and tot else "draft"
+    # Записи одной задачи — рядом: сначала общая, потом вынесенные.
+    rows.sort(key=lambda r: (-total_by_issue[r["issue"]], r["issue"], r["part"] != "", -r["seconds"]))
     total = sum(b["seconds"] for b in day["blocks"])
     if split and not work:
         unassigned += split  # делить не на что — остаётся неразобранным
@@ -585,6 +623,23 @@ def propose(conn, cfg, day):
             "unassigned": int(unassigned), "skipped": int(skipped), "split": int(split),
             "total": int(total),
             "to_log": sum(r["seconds"] for r in rows)}
+
+
+def _sources(p, themes):
+    """Из чего сложилась запись: темы/окна по убыванию времени. keys — что выносить отдельной записью."""
+    out = {}
+    for k, sec in p["sources"].items():
+        t = themes.get(k, k)
+        o = out.setdefault(t, {"key": t, "keys": [], "seconds": 0, "label": None, "icon": None, "_top": -1})
+        o["keys"].append(k)
+        o["seconds"] += sec
+        if sec > o["_top"]:
+            o["_top"], (o["label"], o["icon"]) = sec, p["icons"].get(k, (k, None))
+    res = sorted(out.values(), key=lambda o: -o["seconds"])
+    for o in res:
+        o.pop("_top")
+        o["seconds"] = int(o["seconds"])
+    return res
 
 
 def comment_part(c):

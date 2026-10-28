@@ -355,6 +355,20 @@ body.dragging .drop-on { outline: 2px solid var(--blue); outline-offset: 2px; }
 .wl .acts .drop { margin-left: auto; white-space: nowrap; border: 0; background: none; padding: 6px 4px; font-size: 13px; color: var(--muted); cursor: pointer; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
 .wl .acts .drop:hover { color: var(--warn); text-decoration-color: currentColor; }
 .wl .acts .drop.off { text-decoration: none; cursor: default; color: var(--soft); }
+.wl .k .st.pt { background: var(--card); color: var(--muted); }
+/* «Из чего сложилось»: активности записи — отсюда же выносятся отдельной записью или убираются из задачи. */
+.wl .srcs { grid-column: 1 / -1; min-width: 0; margin-top: 10px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
+.wl .srcs .sh { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+.wl .src { display: flex; align-items: center; gap: 8px; min-height: 30px; font-size: 13px; }
+.wl .src .ico { width: 20px; height: 20px; border-radius: 5px; }
+.wl .src .ico.ph-i { font-size: 10px; }
+.wl .src .n { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wl .src .d { font-weight: 600; font-variant-numeric: tabular-nums; }
+.wl .src.more { color: var(--muted); padding: 4px 0 4px 28px; min-height: 0; line-height: 17px; }
+.wl .src button { flex: none; border: 0; background: none; color: var(--muted); font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.wl .src button:hover { background: var(--card); color: var(--ink); }
+.wl .src button.rm { padding: 4px 6px; }
+.wl .src button.rm:hover { color: var(--warn); }
 .send { margin-top: 16px; width: 100%; height: 52px; border-radius: 999px; border: 0; background: var(--blue); color: #fff; font: 600 14px var(--text); cursor: pointer;
   display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 24px; }
 .send .arr { width: 44px; height: 44px; border-radius: 50%; background: #fff; color: var(--blue); display: grid; place-items: center; }
@@ -944,7 +958,8 @@ function renderDone(box) {
   if (!tasks.length) { box.innerHTML = `<div class="allclear">Пока ничего не разложено</div>`; return; }
   const cards = tasks.map(t => {
     const sys = t.key[0] === "~", name = t.key === "~skip" ? "Личное, не логируется" : t.key === "~split" ? "Делится между задачами" : summary(t.key);
-    const P = S.day.proposal, fold = (P.folded || []).find(f => f.issue === t.key), wl = P.worklogs.find(w => w.issue === t.key);
+    const P = S.day.proposal, fold = (P.folded || []).find(f => f.issue === t.key), wls = P.worklogs.filter(w => w.issue === t.key),
+      wl = wls.length ? { seconds: wls.reduce((x, w) => x + w.seconds, 0), edited: wls.some(w => w.edited), status: wls.every(w => w.status === "pushed" || w.status === "in_jira") ? "pushed" : "draft" } : null;
     const autoN = t.key === "~split" ? [...t.acts.values()].filter(a => a.g.blocks.some(b => b.auto_split)).length : 0;
     const note = t.key === "~skip" ? `<div class="tnote">Не уходит в Jira. Чтобы записать в задачу, откройте список и нажмите на активность</div>` : t.key === "~split" ? `<div class="tnote">${autoN ? "Мелочь без задачи короче 15 минут делится между задачами сама. " : ""}Чтобы записать активность в конкретную задачу, откройте список и нажмите на неё</div>`
       : sys ? "" : fold ? `<div class="tnote">Меньше ${Math.round(P.min_sec / 60)} мин — отдельно не логируется, время добавлено ${fold.into ? `к ${esc(fold.into)}` : "к другим задачам дня"}</div>`
@@ -1035,17 +1050,19 @@ function accept(g, pr, remember) {
 function renderStack() {
   const day = S.day, p = day.proposal, wls = p.worklogs, pending = wls.filter(w => w.status === "draft" || w.status === "changed");
   $("#stackTotal").textContent = hmm(wls.reduce((s, w) => s + w.seconds, 0));
-  $("#stackSub").textContent = wls.length ? `${wls.length} ${plural(wls.length, "задача", "задачи", "задач")}` : "Здесь соберутся ворклоги";
+  const nIss = new Set(wls.map(w => w.issue)).size;
+  $("#stackSub").textContent = !wls.length ? "Здесь соберутся ворклоги" : `${nIss} ${plural(nIss, "задача", "задачи", "задач")}`
+    + (wls.length > nIss ? ` · ${wls.length} ${plural(wls.length, "запись", "записи", "записей")}` : "");
   const ST = { pushed: ["в Jira", ""], in_jira: ["в Jira", ""], changed: ["изменено", "ch"] };
   $("#wls").innerHTML = wls.length ? wls.map(w => { const st = ST[w.status];
-    return `<div class="wl" data-w="${esc(w.issue)}" data-drop="${esc(w.issue)}" style="--p:${pastel(w.issue)}">
-      <span class="k"><i></i><a href="${esc(day.base_url)}/browse/${esc(w.issue)}" target="_blank" rel="noopener">${esc(w.issue)}</a>${st ? `<span class="st ${st[1]}">${st[0]}</span>` : ""}</span>
+    return `<div class="wl" data-w="${esc(w.id)}" data-drop="${esc(w.issue)}" style="--p:${pastel(w.issue)}">
+      <span class="k"><i></i><a href="${esc(day.base_url)}/browse/${esc(w.issue)}" target="_blank" rel="noopener">${esc(w.issue)}</a>${w.part ? `<span class="st pt" title="Отдельная запись в той же задаче: в Jira уйдёт своим ворклогом">отдельно</span>` : ""}${st ? `<span class="st ${st[1]}">${st[0]}</span>` : ""}</span>
       <span class="tv">${hmm(w.seconds)}</span>
       <button class="ed" title="Изменить время и комментарий" aria-label="Изменить ${esc(w.issue)}">${PEN}</button>
       <span class="sum" title="${esc(w.summary || "")}">${esc(w.summary || summary(w.issue))}</span>
       <div class="cmt ${w.comment ? "" : "none"}">${esc(w.comment || "без комментария")}</div>
     </div>`; }).join("") : `<div class="sempty">${day.blocks.length ? "Примите подсказки слева, и задачи появятся здесь" : "Пока нечего отправлять"}</div>`;
-  $$("#wls .wl").forEach(el => $(".ed", el).onclick = () => editWorklog(el, wls.find(w => w.issue === el.dataset.w)));
+  $$("#wls .wl").forEach(el => $(".ed", el).onclick = () => editWorklog(el, wls.find(w => w.id === el.dataset.w)));
   const push = $("#push"), sec = pending.reduce((s, w) => s + w.seconds, 0);
   if (!day.jira_configured) { $("#pushLabel").textContent = "Подключить Jira"; push.disabled = false; push.dataset.mode = "connect"; }
   else { push.dataset.mode = "push"; push.disabled = !pending.length;
@@ -1057,6 +1074,25 @@ function renderStack() {
   $("#manualSub").textContent = day.status === "manual" ? "Трекер снова будет напоминать о дне" : "Трекер перестанет о нём напоминать";
 }
 
+// Из чего сложилось время записи. Тему можно вынести отдельной записью в ту же задачу (своё время и комментарий)
+// или убрать из задачи, если это её собственные отрезки, а не минуты внутри чужой активности.
+function srcList(w) {
+  if (!w.sources.length) return "";
+  // Отдельными строками — то, что заметно по времени; мелькания (пароли, поиск) одной строкой внизу.
+  const big = w.sources.filter((s, i) => i === 0 || s.seconds >= 300), small = w.sources.filter(s => !big.includes(s));
+  // ✕ — только если время в основном своё: минуты внутри чужой активности так не убрать, строка бы осталась.
+  const own = s => S.day.blocks.filter(b => b.issue === w.issue && s.keys.includes(b.context_key || b.id)).reduce((x, b) => x + b.seconds, 0) >= s.seconds / 2;
+  const row = (s, i) => {
+    const act = w.jira_id || w.part ? "" : i > 0 ? `<button data-s="${i}" data-to="${esc(s.key)}" title="Отдельный ворклог в ${esc(w.issue)}: своё время и свой комментарий">Отдельно</button>` : "";
+    const rm = !w.jira_id && own(s) ? `<button class="rm" data-s="${i}" title="Убрать из задачи — вернётся в «Ждут решения»" aria-label="Убрать">✕</button>` : "";
+    return `<div class="src">${icon(s.icon, s.label)}<span class="n" title="${esc(s.label)}">${esc(s.label.replace(/^Claude Code: /, ""))}</span><span class="d">${hmm(s.seconds)}</span>${act}${rm}</div>`; };
+  const extra = [small.length ? `ещё ${small.length} ${plural(small.length, "окно", "окна", "окон")} по мелочи · ${hmm(small.reduce((x, s) => x + s.seconds, 0))}` : "",
+    w.split_seconds >= 60 ? `+${hmm(w.split_seconds)} — доля общего времени «делится между задачами»` : "",
+    w.folded_seconds >= 60 ? `+${hmm(w.folded_seconds)} — мелкие задачи дня короче ${Math.round(S.day.proposal.min_sec / 60)} мин` : ""].filter(Boolean);
+  return `<div class="srcs"><div class="sh">Из чего сложилось · ${dur(w.raw_seconds)}${w.seconds !== w.raw_seconds ? `, в Jira ${hmm(w.seconds)}` : ""}</div>
+    ${big.map(s => row(s, w.sources.indexOf(s))).join("")}${extra.map(x => `<div class="src more">${esc(x)}</div>`).join("")}</div>`;
+}
+
 function editWorklog(el, w) {
   $$("#wls .wl.editing").forEach(x => x !== el && renderStack());
   if (el.classList.contains("editing")) return renderStack();
@@ -1066,9 +1102,12 @@ function editWorklog(el, w) {
   $(".tv", el).outerHTML = `<input class="tv tvin" value="${hmm(w.seconds)}" aria-label="Время" title="Факт ${dur(w.raw_seconds)}" spellcheck="false">`;
   $(".ed", el).innerHTML = CHEV; $(".ed", el).title = "Свернуть без изменений (Esc)";
   // Главное в правке — комментарий (его читают в Jira), поэтому он на всю ширину; время — короткое поле рядом с «Готово».
+  const home = w.part && w.sources.find(s => s.key === w.part);
   el.insertAdjacentHTML("beforeend", `<div class="form"><textarea rows="3" placeholder="Что сделано по задаче — увидят в Jira" aria-label="Комментарий">${esc(w.comment)}</textarea></div>
+    ${srcList(w)}
     <div class="acts"><button class="done">Готово</button>${w.edited ? `<button class="auto">вернуть авто ${hmm(w.auto_seconds)}</button>` : ""}
       ${w.jira_id ? `<span class="drop off" title="Уже отправлено — удалить запись можно только в самой Jira">уже в Jira</span>`
+        : home ? `<button class="drop" data-merge title="Время и активности вернутся в общую запись задачи">Вернуть в общую запись</button>`
         : `<button class="drop" title="Задача не уйдёт в Jira: её активности вернутся в «Ждут решения», запомненные правила для них сбросятся">Убрать</button>`}</div>`);
   const t = $(".tvin", el), c = $(".form textarea", el);
   const fit = () => { c.style.height = "auto"; c.style.height = c.scrollHeight + 2 + "px"; }; fit(); c.oninput = fit; c.focus();
@@ -1076,12 +1115,23 @@ function editWorklog(el, w) {
   c.onkeydown = e => { if (e.key === "Escape") renderStack(); };
   $(".done", el).onclick = async () => {
     try { let d = null;
-      if (t.value.trim() !== hmm(w.seconds)) d = await api("/api/draft", { issue: w.issue, time: t.value });
-      if (c.value !== (w.comment || "")) d = await api("/api/draft", { issue: w.issue, comment: c.value });
+      if (t.value.trim() !== hmm(w.seconds)) d = await api("/api/draft", { issue: w.issue, part: w.part, time: t.value });
+      if (c.value !== (w.comment || "")) d = await api("/api/draft", { issue: w.issue, part: w.part, comment: c.value });
       d ? setDay(d) : renderStack(); } catch (e) { toast(e.message, true); } };
-  $(".auto", el)?.addEventListener("click", () => api("/api/draft", { issue: w.issue, reset: true }).then(setDay));
+  $(".auto", el)?.addEventListener("click", () => api("/api/draft", { issue: w.issue, part: w.part, reset: true }).then(setDay));
+  const part = (keys, to) => api("/api/part", { issue: w.issue, keys, part: to }).then(d => { setDay(d);
+    toast(to ? "Вынесено отдельной записью — у неё своё время и комментарий" : "Вернул в общую запись задачи"); }).catch(e => toast(e.message, true));
+  $("[data-merge]", el)?.addEventListener("click", () => part(home.keys, ""));
+  $$(".src [data-to]", el).forEach(b => b.onclick = () => { const s = w.sources[+b.dataset.s]; part(s.keys, b.dataset.to); });
+  // Убрать одну активность: её отрезки вернутся в «Ждут решения», запомненное правило для неё сбросится.
+  $$(".src .rm", el).forEach(b => b.onclick = () => busy(b, async () => { const s = w.sources[+b.dataset.s]; let d = null;
+    for (const g of S.groups || []) for (const mb of g.members.values()) {
+      const bl = s.keys.includes(mb.key) ? mb.blocks.filter(x => x.issue === w.issue) : [];
+      if (bl.length) d = await api("/api/assign", { issue: null, remember: true, context_key: mb.key, label: mb.label, intervals: bl.map(x => [x.start, x.end]) });
+    }
+    if (d) setDay(d); toast(`${s.label.replace(/^Claude Code: /, "")} — убрано из ${w.issue}, ждёт решения`); }, "…"));
   // Задача попала сюда по ошибке: снимаем привязку со всех её активностей — они уходят в «Ждут решения», запись пропадает из стопки.
-  $("button.drop", el)?.addEventListener("click", e => busy(e.currentTarget, async () => {
+  $("button.drop:not([data-merge])", el)?.addEventListener("click", e => busy(e.currentTarget, async () => {
     let d = null;
     for (const g of S.groups || []) for (const mb of g.members.values()) {
       const bl = mb.blocks.filter(b => b.issue === w.issue);

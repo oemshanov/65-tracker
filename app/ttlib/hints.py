@@ -7,6 +7,8 @@ import os
 import re
 from collections import Counter
 
+from .context import generic_call
+
 STOP = set("""
 claude code figma google chrome safari com www http https html app apps the and for with new untitled mobile
 экран раздел страница мп веб web проект проекта проектов анализ мобильного приложения приложение разработка
@@ -96,6 +98,8 @@ class Hinter:
         self.history = []  # (tokens, issue, label)
         usage = Counter()
         for r in conn.execute("SELECT context_key, label, issue FROM mappings WHERE issue IS NOT NULL"):
+            if generic_call(r["context_key"]):
+                continue
             kp = "" if r["context_key"].startswith("app:") else r["context_key"].split(":", 1)[-1]
             self.history.append((tokens((r["label"] or "") + " " + kp), r["issue"],
                                  pretty(r["context_key"], r["label"])))

@@ -76,7 +76,8 @@ def comments(conn, cfg, date):
     p = propose(conn, cfg, day)
     edited = {r["issue"] for r in conn.execute("SELECT issue FROM drafts WHERE date=? AND comment IS NOT NULL",
                                                 (date.isoformat(),))}
-    todo = [w for w in p["worklogs"] if w["status"] == "draft" and w["issue"] not in edited]
+    # Записи, вынесенные из задачи отдельно, Claude не переписывает: у них свой комментарий по своим активностям.
+    todo = [w for w in p["worklogs"] if w["status"] == "draft" and w["issue"] not in edited and not w["part"]]
     if not todo:
         return 0
     j = jira.Jira(cfg) if jira.Jira(cfg).configured else None
@@ -90,7 +91,7 @@ def comments(conn, cfg, date):
                 det = {}
         acts = defaultdict(int)
         for b in day["blocks"]:
-            if b["issue"] != w["issue"]:
+            if b["issue"] != w["issue"] or (b.get("context_key") or b["id"]) not in {s["key"] for s in w["sources"]}:
                 continue
             for c in b["contexts"]:
                 if c.get("resolved_issue") in (None, w["issue"]):
@@ -105,7 +106,7 @@ def comments(conn, cfg, date):
     n = 0
     for key, text in (out.get("comments") or {}).items():
         if key in {w["issue"] for w in todo} and text:
-            conn.execute("INSERT INTO drafts(date, issue, comment) VALUES(?,?,?) ON CONFLICT(date, issue) "
+            conn.execute("INSERT INTO drafts(date, issue, comment) VALUES(?,?,?) ON CONFLICT(date, issue, part) "
                          "DO UPDATE SET comment=excluded.comment", (date.isoformat(), key, text.strip()[:250]))
             n += 1
     conn.commit()

@@ -26,10 +26,15 @@ CREATE TABLE IF NOT EXISTS suggestions(
 CREATE TABLE IF NOT EXISTS issues(
   key TEXT PRIMARY KEY, summary TEXT, project TEXT, project_name TEXT, status TEXT,
   updated REAL);
+-- Ворклог дня. Обычно один на задачу; part — отдельная запись в той же задаче («Альфа» отдельно от остального).
 CREATE TABLE IF NOT EXISTS drafts(
   date TEXT NOT NULL, issue TEXT NOT NULL, seconds INTEGER, comment TEXT,
-  jira_id TEXT, pushed_seconds INTEGER, pushed_comment TEXT, pushed_at REAL,
-  PRIMARY KEY(date, issue));
+  jira_id TEXT, pushed_seconds INTEGER, pushed_comment TEXT, pushed_at REAL, part TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY(date, issue, part));
+-- Какие активности дня вынесены в отдельную запись задачи (part — ключ темы, из которой она выросла).
+CREATE TABLE IF NOT EXISTS parts(
+  date TEXT NOT NULL, issue TEXT NOT NULL, context_key TEXT NOT NULL, part TEXT NOT NULL,
+  PRIMARY KEY(date, issue, context_key));
 CREATE TABLE IF NOT EXISTS days(date TEXT PRIMARY KEY, status TEXT, note TEXT, updated REAL);
 CREATE TABLE IF NOT EXISTS jira_logged(
   date TEXT NOT NULL, issue TEXT NOT NULL, seconds INTEGER, fetched REAL,
@@ -48,7 +53,29 @@ def connect():
         conn.execute("ALTER TABLE issues ADD COLUMN mine INTEGER DEFAULT 1")
     except sqlite3.OperationalError:
         pass
+    if "part" not in {r[1] for r in conn.execute("PRAGMA table_info(drafts)")}:
+        # До 1.4 ворклог был один на задачу в день: ключ таблицы меняется, поэтому пересоздаём её.
+        conn.executescript("""BEGIN;
+            CREATE TABLE drafts_new(
+              date TEXT NOT NULL, issue TEXT NOT NULL, seconds INTEGER, comment TEXT,
+              jira_id TEXT, pushed_seconds INTEGER, pushed_comment TEXT, pushed_at REAL, part TEXT NOT NULL DEFAULT '',
+              PRIMARY KEY(date, issue, part));
+            INSERT INTO drafts_new(date, issue, seconds, comment, jira_id, pushed_seconds, pushed_comment, pushed_at)
+              SELECT date, issue, seconds, comment, jira_id, pushed_seconds, pushed_comment, pushed_at FROM drafts;
+            DROP TABLE drafts;
+            ALTER TABLE drafts_new RENAME TO drafts;
+            COMMIT;""")
     return conn
+
+
+def set_part(conn, date, issue, context_keys, part):
+    """Вынести активности в отдельную запись задачи (part) или вернуть в общую (part пустой)."""
+    for k in context_keys:
+        if part:
+            conn.execute("INSERT OR REPLACE INTO parts VALUES(?,?,?,?)", (date, issue, k, part))
+        else:
+            conn.execute("DELETE FROM parts WHERE date=? AND issue=? AND context_key=?", (date, issue, k))
+    conn.commit()
 
 
 def set_mapping(conn, context_key, issue=None, category=None, label=None):

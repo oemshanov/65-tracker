@@ -41,6 +41,15 @@ CALL_HINTS = [("telemost", "Телемост"), ("zoom", "Zoom"), ("teams", "Tea
               ("jazz", "SaluteJazz"), ("discord", "Discord"), ("slack", "Slack"), ("facetime", "FaceTime"),
               ("telegram", "Telegram"), ("rocket", "Rocket.Chat"), ("skype", "Skype"), ("whatsapp", "WhatsApp"),
               ("vk", "VK Звонки"), ("webex", "Webex")]
+# Созвон без события в календаре называется по программе: по «Телемосту» не понять, о чём он.
+# Такой выбор задачи относится только к этому разу — правилом «весь Телемост → задача» не запоминается.
+GENERIC_CALLS = {v.lower() for v in [*CALL_APPS.values(), *MEET_DOMAINS.values(), *(v for _, v in CALL_HINTS)]} \
+    | {"созвон", "созвон в браузере"}
+
+
+def generic_call(key):
+    name = (key or "")[len("meeting:"):] if (key or "").startswith("meeting:") else None
+    return name is not None and (name in GENERIC_CALLS or bool(re.fullmatch(r"[\w-]+(\.[\w-]+)+", name)))
 
 TITLE_NOISE = [
     re.compile(r"^\(\d+\)\s*"),  # (3) непрочитанные
@@ -238,7 +247,9 @@ class Resolver:
 
     def __init__(self, conn, cfg):
         self.cfg = cfg
-        self.mappings = {r["context_key"]: r for r in conn.execute("SELECT * FROM mappings")}
+        # Старые правила «Телемост → задача» (до того, как их перестали запоминать) не применяем.
+        self.mappings = {r["context_key"]: r for r in conn.execute("SELECT * FROM mappings")
+                         if not (r["issue"] and generic_call(r["context_key"]))}
         self.suggestions = {r["context_key"]: r for r in conn.execute("SELECT * FROM suggestions")}
         self.rules = []
         for r in cfg.get("rules", []):

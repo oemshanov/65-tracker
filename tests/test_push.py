@@ -75,12 +75,14 @@ def show(title):
     print(title, [(w["issue"], w["seconds"] // 60, w["status"]) for w in p["worklogs"]])
 
 # Привязки задаёт сам тест: макеты и иконки «Банк Север» → SB-77, созвон в Meet → INT-5 (PL-142 узнаётся по ключу).
+# Meet без события в календаре правилом не запоминается — задача ставится на само время созвона.
 for b in build_day(conn, cfg, date)["blocks"]:
     for c in b["contexts"]:
         if "Банк Север" in c["label"] or "bank_icons" in c["label"]:
             db.set_mapping(conn, c["key"], "SB-77", None, c["label"])
         elif "Meet" in c["label"]:
-            db.set_mapping(conn, c["key"], "INT-5", None, c["label"])
+            db.set_mapping(conn, c["key"], "INT-5", None, c["label"])  # старое правило — должно игнорироваться
+            db.add_override(conn, b["start"], b["end"], "INT-5")
 
 show("до:")
 r = jira.push_day(conn, cfg, date)
@@ -105,4 +107,21 @@ WORKLOGS[("INT-5", "9999")] = {"author": {"name": "j.doe"}, "started": "2026-10-
                                "timeSpentSeconds": 1800}
 jira.refresh_logged(conn, cfg, date)
 show("INT-5 внесён руками:")
+# Отдельная запись в той же задаче: иконки «Банк Север» уходят в SB-77 своим ворклогом со своим комментарием.
+# Делят до отправки, поэтому начинаем день заново.
+conn.execute("DELETE FROM drafts")
+conn.execute("DELETE FROM jira_logged")
+conn.commit()
+WORKLOGS.clear()
+day = build_day(conn, cfg, date)
+icons = sorted({c.get("group") or c["key"] for b in day["blocks"] if b["issue"] == "SB-77" for c in b["contexts"]
+                if "bank_icons" in c["label"]})
+db.set_part(conn, date.isoformat(), "SB-77", icons, "icons")
+show("иконки SB-77 отдельно:")
+r = jira.push_day(conn, cfg, date)
+print("push4:", [(x["issue"], x["action"]) for x in r])
+assert [x["action"] for x in r if x["issue"] == "SB-77"] == ["create", "create"]
+assert len([k for k, _ in WORKLOGS if k == "SB-77"]) == 2
+r = jira.push_day(conn, cfg, date)
+assert not any(x["action"] == "create" for x in r), r
 print("OK: все проверки прошли")

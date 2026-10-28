@@ -146,11 +146,12 @@ def cmd_draft(a, conn, cfg):
     date = parse_date(a.date)
     issue = a.issue.upper()
     if a.reset:
-        conn.execute("UPDATE drafts SET seconds=NULL, comment=NULL WHERE date=? AND issue=?", (date.isoformat(), issue))
+        conn.execute("UPDATE drafts SET seconds=NULL, comment=NULL WHERE date=? AND issue=? AND part=''",
+                     (date.isoformat(), issue))
     else:
         secs = parse_dur(a.time) if a.time else None
         conn.execute(
-            "INSERT INTO drafts(date, issue, seconds, comment) VALUES(?,?,?,?) ON CONFLICT(date, issue) DO UPDATE "
+            "INSERT INTO drafts(date, issue, seconds, comment) VALUES(?,?,?,?) ON CONFLICT(date, issue, part) DO UPDATE "
             "SET seconds=COALESCE(excluded.seconds, drafts.seconds), comment=COALESCE(excluded.comment, drafts.comment)",
             (date.isoformat(), issue, secs, a.comment))
     conn.commit()

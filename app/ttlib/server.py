@@ -14,6 +14,7 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import config, db, icons, jira, local_ai, report, suggest, update
+from .context import generic_call
 from .remind import day_needs_review
 from .segment import build_day, parse_date, parse_dur, propose
 
@@ -415,7 +416,12 @@ class Handler(BaseHTTPRequestHandler):
                 issue = (body.get("issue") or "").strip().upper() or None
                 skip = body.get("skip")
                 cat = "split" if body.get("split") else ("personal" if skip else None)
-                if body.get("remember") and body.get("context_key"):
+                ck = body.get("context_key")
+                if ck and generic_call(ck) and issue:
+                    # «Телемост» без события в календаре — задача только на это время, без правила на будущее.
+                    db.delete_mapping(conn, ck)
+                    body["remember"] = False
+                if body.get("remember") and ck:
                     if issue or cat:
                         db.set_mapping(conn, body["context_key"], issue, cat, body.get("label"))
                     else:
@@ -438,17 +444,36 @@ class Handler(BaseHTTPRequestHandler):
                         db.set_mapping(conn, key, s["issue"], s["category"], body.get("labels", {}).get(key))
                 return self._json(day_payload(conn, cfg, date))
             if path == "/api/draft":
-                issue = body["issue"]
+                issue, part = body["issue"], body.get("part") or ""
                 secs = parse_dur(body["time"]) if body.get("time") not in (None, "") else None
                 if body.get("reset"):
-                    conn.execute("UPDATE drafts SET seconds=NULL, comment=NULL WHERE date=? AND issue=?",
-                                 (date.isoformat(), issue))
+                    conn.execute("UPDATE drafts SET seconds=NULL, comment=NULL WHERE date=? AND issue=? AND part=?",
+                                 (date.isoformat(), issue, part))
                 else:
                     conn.execute(
-                        "INSERT INTO drafts(date, issue, seconds, comment) VALUES(?,?,?,?) "
-                        "ON CONFLICT(date, issue) DO UPDATE SET seconds=COALESCE(excluded.seconds, drafts.seconds), "
+                        "INSERT INTO drafts(date, issue, part, seconds, comment) VALUES(?,?,?,?,?) "
+                        "ON CONFLICT(date, issue, part) DO UPDATE SET "
+                        "seconds=COALESCE(excluded.seconds, drafts.seconds), "
                         "comment=COALESCE(excluded.comment, drafts.comment)",
-                        (date.isoformat(), issue, secs, body.get("comment")))
+                        (date.isoformat(), issue, part, secs, body.get("comment")))
+                conn.commit()
+                return self._json(day_payload(conn, cfg, date))
+            if path == "/api/part":
+                # Вынести активности отдельной записью задачи (part — ключ темы) или вернуть в общую (part пустой).
+                old = conn.execute("SELECT DISTINCT part FROM parts WHERE date=? AND issue=? AND context_key IN (%s)"
+                                   % ",".join("?" * len(body["keys"])), [date.isoformat(), body["issue"], *body["keys"]]).fetchall()
+                # Отправленная запись в Jira заморожена: перенос времени из неё или в неё задвоил бы или потерял часы.
+                touched = {p for (p,) in old} | {"", body.get("part") or ""}
+                if conn.execute("SELECT 1 FROM drafts WHERE date=? AND issue=? AND jira_id IS NOT NULL AND part IN (%s)"
+                                % ",".join("?" * len(touched)), [date.isoformat(), body["issue"], *touched]).fetchone():
+                    return self._json({"error": "Запись уже в Jira — делить её можно только до отправки"}, 409)
+                db.set_part(conn, date.isoformat(), body["issue"], body["keys"], body.get("part") or "")
+                # Правки записи, которой больше нет, не нужны (если её ещё не отправили в Jira).
+                for (p,) in [*old, (body.get("part") or "",)]:
+                    if p and not conn.execute("SELECT 1 FROM parts WHERE date=? AND issue=? AND part=?",
+                                              (date.isoformat(), body["issue"], p)).fetchone():
+                        conn.execute("DELETE FROM drafts WHERE date=? AND issue=? AND part=? AND jira_id IS NULL",
+                                     (date.isoformat(), body["issue"], p))
                 conn.commit()
                 return self._json(day_payload(conn, cfg, date))
             if path == "/api/push":
