@@ -569,9 +569,14 @@ def serve(cfg, foreground=True):
     srv = Server(("127.0.0.1", port), cfg["server"]["idle_exit_min"] * 60)
 
     def watchdog():
+        tick = time.time()
         while True:
             time.sleep(30)
-            if srv.idle_exit_sec and time.time() - srv.last > srv.idle_exit_sec:
+            now = time.time()
+            if now - tick > 120:  # Мак спал: сон не считаем простоем, иначе после пробуждения окно теряет сервер
+                srv.touch()
+            tick = now
+            if srv.idle_exit_sec and now - srv.last > srv.idle_exit_sec:
                 srv.shutdown()
                 return
 

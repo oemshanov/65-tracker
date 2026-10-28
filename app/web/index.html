@@ -1304,7 +1304,9 @@ $("#cOk").onclick = e => busy(e.currentTarget, async () => { $("#cErr").textCont
 
 async function loadIssues() { try { S.issues = await api("/api/issues");
   $("#issueList").innerHTML = S.issues.filter(i => i.mine !== 0).map(i => `<option value="${esc(i.key)}" label="${esc(i.summary || "")}${i.project_name ? " · " + esc(i.project_name) : ""}"></option>`).join(""); } catch (e) {} }
-setInterval(() => { if (!document.hidden) api("/api/ping").catch(() => {}); }, 60000);
+// Пока окно открыто (даже свёрнутое), держим сервер: без знака «я тут» он сам выключается через 30 минут.
+setInterval(() => api("/api/ping").catch(() => {}), 60000);
+addEventListener("focus", () => api("/api/ping").catch(() => {}));
 addEventListener("resize", () => S.day && renderRibbon());
 loadIssues().then(() => S.day && render());
 load().catch(e => toast(e.message, true));
