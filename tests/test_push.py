@@ -74,6 +74,14 @@ def show(title):
     p = propose(conn, cfg, build_day(conn, cfg, date))
     print(title, [(w["issue"], w["seconds"] // 60, w["status"]) for w in p["worklogs"]])
 
+# Привязки задаёт сам тест: макеты и иконки «Банк Север» → SB-77, созвон в Meet → INT-5 (PL-142 узнаётся по ключу).
+for b in build_day(conn, cfg, date)["blocks"]:
+    for c in b["contexts"]:
+        if "Банк Север" in c["label"] or "bank_icons" in c["label"]:
+            db.set_mapping(conn, c["key"], "SB-77", None, c["label"])
+        elif "Meet" in c["label"]:
+            db.set_mapping(conn, c["key"], "INT-5", None, c["label"])
+
 show("до:")
 r = jira.push_day(conn, cfg, date)
 print("push1:", [(x["issue"], x["action"]) for x in r])
