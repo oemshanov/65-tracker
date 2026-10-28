@@ -1,0 +1,1313 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>65 tracker</title>
+<style>
+@font-face { font-family: "Rubik"; font-weight: 300 900; src: url(/fonts/rubik-latin.woff2) format("woff2"); }
+@font-face { font-family: "Montserrat"; font-weight: 100 900; font-display: swap; src: url(/fonts/montserrat-latin.woff2) format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+2212; }
+@font-face { font-family: "Montserrat"; font-weight: 100 900; font-display: swap; src: url(/fonts/montserrat-cyrillic.woff2) format("woff2"); unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Onest"; font-weight: 100 900; font-display: swap; src: url(/fonts/onest-latin.woff2) format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+2212; }
+@font-face { font-family: "Onest"; font-weight: 100 900; font-display: swap; src: url(/fonts/onest-cyrillic.woff2) format("woff2"); unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+
+/* Язык — из референсов: крупные тонкие цифры, большие скругления, капсулы, пастель, штриховка, тёмный блок-акцент.
+   От 65apps — синий #2D5FFF, чёрный #161616, Montserrat в заголовках и цифрах. */
+:root {
+  --ground: #e7e7e3; --card: #ffffff; --well: #f2f2ef; --well-2: #e7e7e3; --line: #deded8; --edge: rgba(0,0,0,.05);
+  --ink: #161616; --muted: #5d5f63; --soft: #8a8c90; --on-pastel: #161616;
+  --blue: #2d5fff; --blue-ink: #ffffff; --blue-soft: #e3eaff; --blue-text: #1f45cc;
+  --wait: #cfd0d4; --skip: #dcdcd8;
+  --warn: #b4460c; --warn-bg: #ffe2d0; --ok: #1f8a55; --ok-bg: #d6f2e2;
+  --shadow: 0 14px 40px rgba(0,0,0,.14);
+  --glow: radial-gradient(1100px 800px at 92% 105%, rgba(45,95,255,.20), transparent 68%), radial-gradient(900px 600px at 0% -10%, rgba(255,255,255,.75), transparent 70%);
+  /* задачи: пастельная заливка + насыщенная точка */
+  --p1: #c9d7ff; --d1: #2d5fff; --p2: #ddd4fb; --d2: #7457e0; --p3: #f6e38a; --d3: #a88300; --p4: #f8cfe6; --d4: #cf3f8a;
+  --p5: #c6eed9; --d5: #1f9a5c; --p6: #fdd8bf; --d6: #d4631f; --p7: #c3eaf1; --d7: #148ea3; --p8: #ead2f7; --d8: #9a45c4;
+  --r-xl: 30px; --r-l: 22px; --r-m: 14px;
+  --display: "Montserrat", -apple-system, sans-serif; --text: "Onest", -apple-system, system-ui, sans-serif;
+  color-scheme: light;
+}
+/* Тёмная тема — целиком тёмная, вместе с macOS. Пастель задач остаётся: это маркеры. */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --ground: #0f0f10; --card: #1d1d20; --well: #28282c; --well-2: #323237; --line: #34343a; --edge: rgba(255,255,255,.07);
+  --ink: #f4f4f5; --muted: #b0b2b7; --soft: #8f9197;
+  --blue: #3a66ff; --blue-soft: #1f2a52; --blue-text: #b3c6ff; --wait: #5c5e65; --skip: #45474d;
+  --warn: #ff9a5c; --warn-bg: #3a2416; --ok: #6fd69c; --ok-bg: #173022; --shadow: 0 14px 40px rgba(0,0,0,.5);
+  --glow: radial-gradient(1100px 820px at 90% 100%, rgba(45,95,255,.34), transparent 70%), radial-gradient(900px 640px at 0% 0%, rgba(90,120,255,.13), transparent 70%);
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --ground: #0f0f10; --card: #1d1d20; --well: #28282c; --well-2: #323237; --line: #34343a; --edge: rgba(255,255,255,.07);
+  --ink: #f4f4f5; --muted: #b0b2b7; --soft: #8f9197;
+  --blue: #3a66ff; --blue-soft: #1f2a52; --blue-text: #b3c6ff; --wait: #5c5e65; --skip: #45474d;
+  --warn: #ff9a5c; --warn-bg: #3a2416; --ok: #6fd69c; --ok-bg: #173022; --shadow: 0 14px 40px rgba(0,0,0,.5);
+  --glow: radial-gradient(1100px 820px at 90% 100%, rgba(45,95,255,.34), transparent 70%), radial-gradient(900px 640px at 0% 0%, rgba(90,120,255,.13), transparent 70%);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+/* Мягкое свечение 65apps-синим из угла; фон неподвижен, карточки непрозрачны — видно только в просветах. */
+/* Шкала: 64 · 38 · 32 · 20 · 14 · 13 · 12; начертания 300 · 400 · 600. */
+body { background: var(--glow), var(--ground); background-attachment: fixed; min-height: 100vh; color: var(--ink); font: 14px/1.45 var(--text); -webkit-font-smoothing: antialiased; }
+button, input, textarea { font: inherit; color: inherit; }
+a { color: inherit; text-decoration: none; }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+.wrap { max-width: 1320px; margin: 0 auto; padding: 20px 28px 56px; }
+
+/* ---------- верхняя строка ---------- */
+.bar { display: flex; align-items: center; gap: 12px; }
+/* Знак 65 — оригинальный, с сайта 65apps; рядом «tracker» в манере «apps». */
+/* «tracker» — Rubik, как «apps» в логотипе 65apps. */
+.brand { display: flex; align-items: center; gap: 4px; font: 500 26px/1 "Rubik", var(--display); letter-spacing: -.02em; color: var(--ink); }
+.brand .logo { width: 44px; height: 44px; color: var(--ink); }
+.sp { flex: 1; }
+.circle { width: 42px; height: 42px; border-radius: 50%; border: 0; background: var(--card); display: grid; place-items: center; cursor: pointer; color: var(--ink); }
+.circle:hover { background: #fff; box-shadow: 0 0 0 1px var(--line); }
+.circle svg { width: 18px; height: 18px; }
+.circle.dark { background: var(--blue); color: #fff; }
+.pill { height: 42px; padding: 0 18px; border-radius: 999px; border: 0; background: var(--card); cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.pill:hover { box-shadow: 0 0 0 1px var(--line); }
+.pill.dark { background: var(--blue); color: #fff; }
+.pill.blue { background: var(--blue); color: #fff; }
+.pill.sm { height: 34px; padding: 0 14px; font-size: 14px; }
+.pill:disabled { opacity: .45; cursor: default; box-shadow: none; }
+
+/* ---------- герой: дата и большие цифры ---------- */
+/* Верх — две карточки, как бенто в референсах: дата с неделей и итог дня. */
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) 330px; align-items: stretch; gap: 18px; margin: 22px 0 18px; }
+.day, .stats { background: var(--card); border-radius: var(--r-xl); padding: 24px 26px; min-width: 0; }
+.day h1 { margin: 0; font: 600 48px/0.98 var(--display); letter-spacing: -.035em; }
+.day h1 small { display: block; font-size: 1em; font-weight: 300; color: var(--muted); }
+/* Слева — дата и неделя капсулами, справа — узкая карточка с цифрой дня и нормой недели. */
+/* Карточка даты: дата со стрелками слева, неделя узкими капсулами справа. Ширина колонки — под «Понедельник». */
+.day { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 16px; align-items: center; }
+.day .wk { display: flex; align-items: center; }
+.day h1 { white-space: nowrap; }
+.day .nav { display: flex; align-items: center; gap: 8px; margin-top: 18px; }
+.day .nav .circle { width: 38px; height: 38px; flex: none; }
+.day .circle { background: var(--well); }
+.stats { display: flex; flex-direction: column; }
+.wbar { height: 8px; border-radius: 999px; background: var(--well); overflow: hidden; }
+.wbar i { display: block; height: 100%; border-radius: 999px; background: var(--ink); }
+.wlab { display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px; color: var(--muted); }
+.wlab b { color: var(--ink); font-weight: 600; }
+.wbadge { white-space: nowrap; margin-left: 8px; font: 600 12px var(--text); padding: 2px 8px; border-radius: 999px; background: var(--warn-bg); color: var(--warn); }
+.sum1 { width: 100%; }
+.wk { min-width: 0; }
+.wk .wh { display: flex; align-items: baseline; gap: 6px; font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+.wk .wh b { font: 600 15px var(--display); color: var(--ink); font-variant-numeric: tabular-nums; }
+.dots { flex: 1; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.dd { border: 0; background: none; padding: 0; display: grid; justify-items: center; gap: 6px; cursor: pointer; color: var(--ink); min-width: 0; }
+.dd .dl { font-size: 12px; color: var(--soft); }
+.dd .cap { position: relative; width: 30px; height: 72px; border-radius: 15px; background: var(--well-2); overflow: hidden; }
+.dd .cap i { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 15px; background: var(--muted); }
+.dd b { font: 600 12px var(--text); color: var(--muted); font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.dd .ck { width: 11px; height: 11px; color: var(--ok); }
+.dd.sel .dl, .dd.sel b { color: var(--ink); }
+.dd.sel .dl, .dd.sel b { font-weight: 600; color: var(--ink); }
+.dd:hover:not(.sel) .cap { filter: brightness(1.2); }
+.wcap { margin-top: 10px; text-align: right; font-size: 13px; color: var(--muted); }
+.wcap b { font-weight: 600; color: var(--ink); }
+.dd.sel .cap i { background: var(--ink); }
+.stats > #stats { height: 100%; }
+.stats .sum1 { height: 100%; display: flex; flex-direction: column; }
+.stats .srow { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stats .sum1 .v { margin-top: auto; margin-bottom: 10px; }
+/* Из чего сложился день: в задачах / ждут решения / личное. */
+.mix { display: flex; gap: 2px; height: 8px; }
+.mix i { border-radius: 999px; min-width: 0; }
+.mix .t, .mixl .t { background: var(--ink); }
+.mix .w, .mixl .w { background: color-mix(in srgb, var(--warn) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 70%, transparent); }
+.mix .s, .mixl .s { background: var(--skip); }
+.mixl { display: grid; grid-template-columns: auto auto; justify-content: start; gap: 4px 14px; margin-top: 8px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mixl span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.mixl i { width: 8px; height: 8px; border-radius: 50%; }
+.day .wk { flex-direction: column; align-items: stretch; }
+.dd.future { cursor: default; } .dd.future .cap { opacity: .45; }
+.sum1 .l { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sum1 .l { color: var(--muted); font-size: 14px; }
+.sum1 .okt { color: var(--ok); }
+.sum1 .v { font: 300 96px/0.95 var(--display); letter-spacing: -.05em; font-variant-numeric: tabular-nums; margin: 6px 0 12px; }
+.sum1 .notes { display: flex; gap: 18px; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
+.sum1 .notes .need { color: var(--warn); }
+.caps { display: flex; gap: 6px; }
+.cap { min-width: 0; height: 40px; border-radius: 999px; padding: 0 12px; display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; cursor: default; }
+.cap .cl { font: 700 12px var(--text); overflow: hidden; text-overflow: ellipsis; }
+.cap .ct { margin: 0 auto; }
+.cap .cl + .ct { margin: 0 0 0 auto; font: 500 13px var(--text); font-variant-numeric: tabular-nums; }
+.cap.task { background: var(--p); color: var(--on-pastel); }
+.cap.wait { box-shadow: inset 0 0 0 1.5px var(--warn); color: var(--warn); }
+.cap.skip { background: repeating-linear-gradient(135deg, var(--well-2) 0 2px, transparent 2px 7px); box-shadow: inset 0 0 0 1px var(--line); color: var(--muted); }
+.cap:hover { filter: brightness(1.06); }
+.sum1 .go { margin-left: auto; background: var(--warn-bg); color: var(--warn); }
+.stat .v { font: 300 64px/0.95 var(--display); letter-spacing: -.045em; font-variant-numeric: tabular-nums; display: flex; align-items: flex-start; gap: 8px; }
+.stat .v sup { font: 600 11px/1 var(--text); letter-spacing: 0; padding: 4px 7px; border-radius: 999px; background: var(--card); margin-top: 6px; }
+.stat .v sup.warn { background: var(--warn-bg); color: var(--warn); }
+.stat .v sup.ok { background: var(--ok-bg); color: var(--ok); }
+.stat .l { margin-top: 6px; color: var(--muted); font-size: 14px; }
+
+/* неделя — капсулы */
+.week { display: flex; gap: 4px; flex-wrap: wrap; }
+.wd { height: 40px; padding: 0 12px 0 11px; border-radius: 999px; border: 0; background: var(--well); cursor: pointer; display: inline-flex; align-items: center; gap: 10px; }
+.wd:hover { box-shadow: 0 0 0 1px var(--line); }
+.wd .n { color: var(--muted); font-size: 13px; }
+.wd .h { font: 600 15px var(--display); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.wd i { width: 8px; height: 8px; border-radius: 50%; background: transparent; }
+.wd i.ok { background: var(--ok); } .wd i.need { background: var(--warn); }
+.wd.sel { background: var(--blue); color: #fff; } .wd.sel .n { color: rgba(255,255,255,.75); } .wd.sel i.ok, .wd.sel i.need { background: #fff; }
+.wd.future { opacity: .4; cursor: default; background: transparent; padding: 0 6px; }
+
+/* ---------- лента дня — чёрная капсула ---------- */
+.ribbon { background: var(--card); border-radius: var(--r-xl); padding: 14px 16px 10px; margin-bottom: 18px; }
+.rhead { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+.rhead b { color: var(--ink); font: 600 20px var(--display); letter-spacing: -.01em; }
+.rhead .lg { display: inline-flex; align-items: center; gap: 6px; }
+.rhead .lg i { width: 18px; height: 10px; border-radius: 3px; display: inline-block; }
+.ev { position: relative; height: 22px; margin-bottom: 6px; }
+.ev div { position: absolute; height: 22px; padding: 0 9px; border-radius: 999px; background: var(--well); color: var(--muted); font-size: 12px; line-height: 22px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.track { position: relative; height: 40px; border-radius: 12px; background: var(--well); }
+.b { position: absolute; top: 7px; bottom: 7px; border-radius: 6px; cursor: pointer; overflow: hidden; color: var(--on-pastel); font: 600 12px var(--text);
+  padding: 0 7px; display: flex; align-items: center; white-space: nowrap; transition: transform .12s, opacity .15s; }
+.b:hover { transform: translateY(-2px); }
+.b.hint { background: color-mix(in srgb, var(--c) 22%, transparent) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 80%, transparent); }
+.b.wait { background: color-mix(in srgb, var(--warn) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 70%, transparent); }
+.b.skip { background: var(--skip); opacity: .6; }
+.b.splitb { background: var(--soft); }
+.b.dim { opacity: .25; }
+.b.on { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--blue); z-index: 1; }
+.axis .nowlab { color: var(--blue-text); font-weight: 600; }
+.now { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--blue); border-radius: 2px; pointer-events: none; }
+.now span { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); background: var(--blue); color: #fff; font-size: 12px; font-weight: 600; padding: 1px 7px; border-radius: 999px; }
+.axis { position: relative; height: 16px; margin: 8px 2px 0; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.axis span { position: absolute; transform: translateX(-50%); }
+.axis span:first-child { transform: none; }
+.axis span:last-child { transform: translateX(-100%); }
+
+/* ---------- бенто: разбор | стопка ---------- */
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 18px; align-items: start; }
+.col { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; min-width: 0; }
+.col > * { min-width: 0; }
+.panel { background: var(--card); border-radius: var(--r-xl); padding: 22px; }
+.ph { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.ph h2 { margin: 0; font: 600 20px/1.1 var(--display); letter-spacing: -.025em; }
+.ph .count { font: 600 13px var(--text); padding: 3px 10px; border-radius: 999px; background: var(--warn-bg); color: var(--warn); }
+.ph .count.gray { background: var(--well); color: var(--muted); }
+.seg { display: inline-flex; background: var(--well); border-radius: 999px; padding: 3px; }
+.seg button { border: 0; background: transparent; height: 32px; padding: 0 14px; border-radius: 999px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.seg button.on { background: var(--blue); color: #fff; }
+
+.ico { width: 30px; height: 30px; border-radius: 8px; flex: none; object-fit: contain; }
+.ico.ph-i { background: var(--well); display: grid; place-items: center; font: 600 12px var(--display); color: var(--muted); }
+
+/* ждут решения — карточка читается как вопрос: «Похоже на задачу … — Да, сюда / или другая» */
+.waits { display: grid; gap: 10px; }
+.wcard { background: var(--well); border-radius: var(--r-l); padding: 16px 18px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px 16px; }
+.wcard .sugg { grid-column: 1 / -1; }
+.wcard.sel { box-shadow: 0 0 0 2px var(--blue); }
+.wtop { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.wtop .t { min-width: 0; }
+.wtop .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wtop .meta { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wcard .dur { font: 300 32px/1 var(--display); letter-spacing: -.04em; font-variant-numeric: tabular-nums; white-space: nowrap; align-self: center; }
+.ask { grid-column: 1 / -1; display: grid; gap: 8px; }
+.ask .q { font-size: 13px; color: var(--muted); }
+.ask .q b { color: var(--ink); font-weight: 600; }
+.sugg { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sugg .chip { flex: 1 1 260px; min-width: 0; height: 42px; border-radius: 999px; border: 1.5px dashed color-mix(in srgb, var(--p), #000 28%); padding: 0 16px; display: flex;
+  align-items: center; gap: 10px; cursor: pointer; color: var(--on-pastel); background: color-mix(in srgb, var(--p) 70%, #fff); text-align: left; }
+.sugg .chip:hover { background: var(--p); }
+.sugg .chip b { font-weight: 600; font-size: 12px; white-space: nowrap; flex: none; }
+.sugg .chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.sugg .yes { height: 42px; padding: 0 18px 0 14px; border-radius: 999px; border: 0; background: var(--blue); color: #fff; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; flex: none; }
+.sugg .yes svg { width: 18px; height: 18px; }
+.sugg .chip .spark { display: inline-flex; color: var(--blue-text); flex: none; } .sugg .chip .spark svg { width: 15px; height: 15px; }
+.pill.ai { background: var(--blue-soft); color: var(--blue-text); font-weight: 600; gap: 6px; } .pill.ai svg { width: 15px; height: 15px; }
+.pill.ai:hover { box-shadow: 0 0 0 1px color-mix(in srgb, var(--blue) 40%, transparent); }
+.sugg .more { width: 42px; height: 42px; padding: 0; display: grid; place-items: center; border-radius: 50%; border: 0; background: var(--well-2); color: var(--muted); cursor: pointer; }
+.sugg .more svg { width: 18px; height: 18px; }
+.sugg .mw { position: relative; flex: none; }
+.sugg .wm { top: 48px; right: 0; min-width: 290px; }
+.sugg .more:hover { background: var(--card); color: var(--ink); }
+.sugg .solo { flex: 1 1 260px; min-width: 0; height: 42px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); padding: 0 16px; font-size: 14px; }
+.sugg .solo::placeholder { color: var(--soft); }
+.pick[hidden] { display: none; }
+.pick { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pick .or { font-size: 13px; color: var(--muted); }
+.pick .alts { flex-basis: 100%; display: flex; gap: 6px; align-items: center; }
+.pick.act { flex-direction: column; align-items: stretch; gap: 10px; margin-top: 4px; }
+.pick.act input[list] { flex: none; width: 100%; height: 44px; }
+.pick.act .alts { flex-wrap: wrap; }
+.pick.act .alts .pill { height: 28px; padding: 0 11px; font-size: 12px; }
+.pick.act .alts .pill svg { width: 13px; height: 13px; }
+input[list]::-webkit-calendar-picker-indicator { display: none !important; }
+.pick.act .rem { padding: 0; white-space: normal; }
+.txt.sm { height: 28px; padding: 0 11px; font-size: 12px; color: var(--muted); }
+.pick .alt { border: 0; background: none; padding: 0; font-size: 13px; color: var(--muted); cursor: pointer; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.pick .alt:hover { color: var(--ink); text-decoration-color: currentColor; }
+.pick input[list] { flex: 1 1 220px; min-width: 0; height: 38px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); padding: 0 16px; font-size: 14px; }
+.pick input::placeholder { color: var(--soft); }
+.txt { border: 1px solid var(--line); background: var(--card); color: var(--ink); font-size: 13px; cursor: pointer; height: 34px; padding: 0 12px; border-radius: 999px; white-space: nowrap; }
+.txt:hover { border-color: var(--soft); }
+.rem { font-size: 13px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; padding: 0 4px; white-space: nowrap; }
+.rem input { accent-color: var(--blue); }
+.sugg .yes[hidden] { display: none; }
+.chip .cv { display: inline-flex; margin-left: auto; padding-left: 8px; color: var(--muted); font-style: normal; } .chip .cv svg { width: 14px; height: 14px; }
+/* Пустой первый день: что будет происходить. */
+.panel.first { padding: 28px 30px; }
+.panel.first h2 { margin: 0 0 8px; font: 600 24px var(--display); letter-spacing: -.02em; }
+.panel.first p { margin: 0; max-width: 62ch; color: var(--muted); font-size: 15px; }
+.panel.first ol { list-style: none; margin: 22px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; counter-reset: st; }
+.panel.first li { counter-increment: st; display: grid; gap: 4px; padding: 16px 18px; border-radius: var(--r-l); background: var(--well); font-size: 14px; color: var(--muted); }
+.panel.first li b { color: var(--ink); font-size: 15px; }
+.panel.first li b::before { content: counter(st); display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 8px; border-radius: 50%; background: var(--blue); color: #fff; font-size: 12px; }
+.tempty { position: absolute; inset: 0; display: grid; place-items: center; font-size: 13px; color: var(--soft); }
+.stats .span.rec { display: inline-flex; align-items: center; gap: 6px; color: var(--ok); }
+.stats .span.rec i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+.allclear { padding: 26px; border-radius: var(--r-l); background: repeating-linear-gradient(135deg, var(--well) 0 8px, transparent 8px 16px); color: var(--muted); text-align: center; }
+
+/* разложено — пастельные карточки задач */
+.tasks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.tcol { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.tcard { margin: 0; border-radius: var(--r-l); padding: 16px; background: var(--p); color: var(--on-pastel); }
+.tcard.gray { background: transparent; color: var(--ink); border: 1.5px dashed var(--line); }
+.tcard.gray .ta { background: var(--card); }
+.thead { display: flex; align-items: flex-start; gap: 10px; }
+.thead .k { font: 600 12px var(--text); padding: 3px 9px; border-radius: 999px; background: rgba(255,255,255,.6); }
+.thead .s { flex: 1; min-width: 0; font-weight: 600; line-height: 1.25; }
+.thead .v { font: 300 32px/1 var(--display); letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.thead[data-open] { cursor: pointer; }
+.tnote { margin-top: 8px; font-size: 12px; color: var(--muted); }
+.dnd-hint { font-size: 12px; color: var(--soft); }
+.tfoot { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.ticons { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; }
+.ticons .ico { width: 22px; height: 22px; border-radius: 6px; }
+.toggle { margin-left: auto; height: 30px; padding: 0 10px 0 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  background: transparent; color: inherit; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.toggle:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
+.toggle svg { width: 14px; height: 14px; transition: transform .15s; }
+.toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+.tcard:hover { filter: brightness(1.03); }
+.tacts[hidden], .ticons[hidden] { display: none; }
+.ta[draggable="true"], .wtop[draggable="true"] { cursor: grab; }
+body.dragging [data-drop] { outline: 2px dashed color-mix(in srgb, var(--blue) 45%, transparent); outline-offset: 2px; }
+body.dragging .drop-on { outline: 2px solid var(--blue); outline-offset: 2px; }
+.tacts { margin-top: 12px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.ta { display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 6px; border-radius: 12px; background: rgba(255,255,255,.55); cursor: pointer; }
+.ta:hover { background: rgba(255,255,255,.85); }
+.ta .ico { width: 24px; height: 24px; border-radius: 6px; }
+.ta .n { flex: 1; min-width: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ta .d { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ta.edit { background: #fff; flex-wrap: wrap; cursor: default; }
+/* Кнопка в строке активности — видно, что с ней можно сделать, без второго раскрытия. */
+.ta .tab, .ta .x { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border: 0; border-radius: 999px; background: none; color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; }
+.ta .tab svg { width: 14px; height: 14px; }
+.ta .tab:hover { color: var(--ink); background: var(--card); }
+.ta .tab.ai { background: var(--blue-soft); color: var(--blue-text); }
+.ta.edit .tab { display: none; }
+.ta .x { display: none; } .ta .x svg { width: 15px; height: 15px; } .ta .x svg, .wl.editing .ed svg { transform: rotate(180deg); } .ta.edit .x { display: inline-flex; } .ta .x:hover { color: var(--ink); background: var(--card); }
+.ta.edit .pick { width: 100%; }
+
+/* ---------- стопка «Уйдёт в Jira» — тёмный блок ---------- */
+.stack { position: sticky; top: 18px; background: var(--card); border-radius: var(--r-xl); padding: 22px; }
+.jira { width: 26px; height: 26px; border-radius: 7px; background: #fff; padding: 3px; }
+.big { font: 300 64px/1 var(--display); letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
+.bigsub { color: var(--muted); margin: 8px 0 18px; font-size: 14px; }
+.wls { display: grid; gap: 8px; }
+/* Строка ворклога: тихая по умолчанию, поля появляются по «Изменить». */
+/* Каждая задача — своя плитка: подложка и полоска цвета задачи слева, без рамок. */
+.wl { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 2px 10px; padding: 14px 12px 14px 16px; border-radius: var(--r-l); align-items: center;
+  background: var(--well); position: relative; padding-left: 22px; }
+/* Цвет задачи — ровная полоска внутри карточки, а не загнутый по углу край. */
+.wl::before, .tcard:not(.gray)::before { content: ""; position: absolute; left: 10px; top: 14px; bottom: 14px; width: 3px; border-radius: 2px; background: var(--p); }
+.tcard { position: relative; }
+:root[data-theme="light"] .tcard::before { display: none; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .tcard::before { display: none; } }
+.wl .k { display: inline-flex; align-items: center; gap: 8px; font: 600 12px var(--text); min-width: 0; }
+.wl .k i { display: none; }  /* цвет задачи уже показан полоской слева */
+.wl .k a:hover { text-decoration: underline; }
+.wl .k .st { font: 600 12px var(--text); padding: 2px 7px; border-radius: 999px; background: var(--ok-bg); color: var(--ok); }
+.wl .k .st.ch { background: var(--warn-bg); color: var(--warn); }
+.wl .tv { grid-row: 1 / span 2; grid-column: 2; font: 300 32px/1 var(--display); letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.wl .ed { grid-row: 1 / span 2; grid-column: 3; width: 32px; height: 32px; border-radius: 50%; border: 0; background: transparent; color: var(--soft); cursor: pointer; display: grid; place-items: center; }
+.wl .ed:hover { background: var(--well); color: var(--ink); }
+.wl .ed svg { width: 15px; height: 15px; }
+.wl .sum { grid-column: 1; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wl .cmt { grid-column: 1 / -1; margin-top: 4px; font-size: 13px; line-height: 18px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.wl .cmt.none { color: var(--soft); font-style: italic; }
+.wl.editing { background: var(--well-2); }
+.wl .form { grid-column: 1 / -1; margin-top: 10px; }
+/* Поле времени — того же вида, что поле комментария под ним: рамка в 1 px, без подчёркиваний. */
+.wl .tvin { width: 4.6ch; height: 44px; padding: 0 10px; margin: -6px 0; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); text-align: right; }
+.wl .tvin:focus { outline: 2px solid var(--blue); border-color: transparent; }
+.wl.editing .ed { color: var(--muted); }
+.wl .form textarea { width: 100%; min-height: 76px !important; }
+.wl .form input { height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); text-align: right; padding: 0 12px;
+  font: 300 26px/1 var(--display); letter-spacing: -.04em; font-variant-numeric: tabular-nums; color: var(--ink); }
+.wl .form textarea { border-radius: 12px; border: 1px solid var(--line); background: var(--card); padding: 11px 12px; font-size: 13px; line-height: 18px; resize: none; overflow: hidden; min-height: 44px; color: var(--ink); }
+.wl .form input:focus, .wl .form textarea:focus { outline: 2px solid var(--blue); border-color: transparent; }
+.wl .acts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+.wl .acts .done { height: 34px; padding: 0 16px; border-radius: 999px; border: 0; background: var(--blue); color: #fff; font-weight: 600; cursor: pointer; }
+.wl .acts .auto { border: 0; background: none; color: var(--muted); font-size: 13px; cursor: pointer; padding: 6px 8px; border-radius: 999px; }
+.wl .acts .auto:hover { background: var(--card); color: var(--ink); }
+.wl .acts .drop { margin-left: auto; white-space: nowrap; border: 0; background: none; padding: 6px 4px; font-size: 13px; color: var(--muted); cursor: pointer; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.wl .acts .drop:hover { color: var(--warn); text-decoration-color: currentColor; }
+.wl .acts .drop.off { text-decoration: none; cursor: default; color: var(--soft); }
+.send { margin-top: 16px; width: 100%; height: 52px; border-radius: 999px; border: 0; background: var(--blue); color: #fff; font: 600 14px var(--text); cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 24px; }
+.send .arr { width: 44px; height: 44px; border-radius: 50%; background: #fff; color: var(--blue); display: grid; place-items: center; }
+.send .arr svg { width: 18px; height: 18px; }
+.send:disabled { background: var(--well); color: var(--muted); cursor: default; }
+.send:disabled .arr { background: var(--well-2); color: var(--muted); }
+.snote { font-size: 12px; color: var(--muted); margin: 10px 4px 0; }
+.snote:empty { display: none; }
+.snote b { color: var(--warn); font-weight: 600; }
+.slinks { display: flex; justify-content: center; gap: 4px; margin-top: 6px; }
+.slinks button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 6px 10px; border-radius: 999px; }
+.slinks button:hover { background: var(--well); color: var(--ink); }
+.sempty { padding: 24px; border-radius: var(--r-l); background: repeating-linear-gradient(135deg, var(--well) 0 8px, transparent 8px 16px); color: var(--muted); text-align: center; font-size: 14px; }
+
+/* Не хватает доступа — оранжевая плашка сверху, с кнопкой, которая сама вызывает запрос macOS. */
+.perm { display: flex; align-items: center; gap: 16px; background: var(--warn-bg); border-radius: var(--r-l); padding: 12px 14px 12px 20px; margin-bottom: 12px; }
+.perm div { flex: 1; min-width: 0; font-size: 13px; color: var(--muted); }
+.perm b { display: block; font: 600 14px var(--text); color: var(--warn); margin-bottom: 2px; }
+.perm .pill { flex: none; background: var(--warn); color: #fff; }
+.banner { display: flex; align-items: center; gap: 16px; background: var(--blue); color: #fff; border-radius: var(--r-xl); padding: 18px 22px; margin-bottom: 18px; }
+.banner b { font: 600 18px var(--display); display: block; }
+.banner span { opacity: .8; font-size: 14px; }
+
+.chrono { display: grid; grid-template-columns: minmax(0, 1fr); }
+.chrono .row { min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px 4px; border-top: 1px solid var(--well); }
+.chrono .row:first-child { border-top: 0; }
+.chrono .tm { font: 400 13px var(--text); font-variant-numeric: tabular-nums; width: 96px; color: var(--muted); }
+.chrono .dot { width: 12px; height: 12px; border-radius: 4px; background: var(--p, #ccc); flex: none; }
+.chrono .n { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
+.chrono .d { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--blue); color: #fff; padding: 12px 20px; border-radius: 999px; font-size: 14px;
+  max-width: min(640px, 92vw); z-index: 30; display: none; white-space: pre-line; box-shadow: 0 12px 30px rgba(0,0,0,.2); }
+.toast.err { background: #c4242a; }
+.tip { position: fixed; pointer-events: none; background: var(--card); color: var(--ink); font-size: 12px; line-height: 17px; padding: 10px 12px; border-radius: 14px;
+  box-shadow: var(--shadow); max-width: 340px; z-index: 29; display: none; }
+.tip .m { color: var(--muted); }
+.menu { position: absolute; right: 0; top: 50px; z-index: 20; min-width: 310px; background: var(--card); border-radius: 18px; padding: 6px; box-shadow: var(--shadow), inset 0 0 0 1px var(--edge); display: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .menu { background: var(--well); } :root:not([data-theme="light"]) .menu button:hover { background: var(--well-2); } }
+:root[data-theme="dark"] .menu { background: var(--well); } :root[data-theme="dark"] .menu button:hover { background: var(--well-2); }
+.menu.open { display: block; }
+.menu button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 10px 12px; border-radius: 12px; cursor: pointer; font-size: 14px; }
+.menu button:hover { background: var(--well); }
+.menu button small { display: block; font-size: 12px; color: var(--muted); margin-top: 1px; }
+/* Пункт меню с иконкой: иконка слева, название и пояснение справа. */
+.menu button.mi { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 12px; align-items: start; }
+.menu button.mi > i { display: grid; place-items: center; height: 20px; color: var(--muted); }
+.menu button.mi > i svg { width: 18px; height: 18px; }
+.menu button.mi:hover > i { color: var(--ink); }
+dialog { border: 0; border-radius: 26px; background: var(--card); color: var(--ink); padding: 26px; max-width: 520px; width: calc(100vw - 32px); box-shadow: 0 30px 70px rgba(0,0,0,.3); }
+dialog::backdrop { background: rgba(0,0,0,.55); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+dialog h2 { font: 600 22px var(--display); letter-spacing: -.02em; margin: 0 0 6px; }
+dialog p { color: var(--muted); font-size: 14px; margin: 6px 0; }
+dialog .field { display: grid; gap: 6px; margin-top: 14px; }
+dialog .field span { font-size: 13px; color: var(--muted); }
+dialog .field input { height: 44px; border: 1px solid var(--line); border-radius: 999px; padding: 0 16px; background: var(--well); }
+dialog .cnote { color: var(--muted); font-size: 13px; min-height: 0; margin-top: 10px; }
+dialog .cnote:empty { display: none; }
+dialog .err { color: #c4242a; font-size: 13px; min-height: 18px; margin-top: 8px; }
+dialog .foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+/* Настройки: секции со строками «название — значение или действие». */
+dialog.set { max-width: 620px; max-height: calc(100vh - 80px); overflow-y: auto; padding: 30px 34px 26px; box-shadow: 0 30px 80px rgba(0,0,0,.5), inset 0 0 0 1px var(--edge); }
+dialog.set h2 { font-size: 28px; margin: 0; }
+/* Шапка настроек остаётся на месте при прокрутке, крестик всегда виден. */
+.set .shead { position: sticky; top: -30px; z-index: 2; display: flex; align-items: center; justify-content: space-between; margin: -30px -34px 0; padding: 26px 26px 12px 34px; background: var(--card); }
+.set .sclose { width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--well); color: var(--muted); display: grid; place-items: center; cursor: pointer; }
+.set .sclose:hover { color: var(--ink); background: var(--well-2); } .set .sclose svg { width: 16px; height: 16px; }
+.set section { margin-top: 24px; } .set section:first-of-type { margin-top: 18px; }
+/* Разделы отделены линией и воздухом: внутри раздела строки плотно, между разделами — явная граница. */
+.set section + section { border-top: 1px solid var(--line); padding-top: 22px; }
+.set h3 { margin-bottom: 8px !important; }
+.set h3 { margin: 0 0 4px; font: 600 16px var(--text); color: var(--ink); }
+.set .srow { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 46px; padding: 4px 0; font-size: 14px; color: var(--muted); }
+.set .srow > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set .srow > span:first-child:has(small) { white-space: normal; }
+.set .srow small { display: block; margin-top: 2px; font-size: 12px; color: var(--soft); }
+.set .ok { color: var(--ok); font-size: 13px; font-weight: 600; flex: none; } .set .no { color: var(--warn); font-size: 13px; font-weight: 600; flex: none; }
+.set .mut { color: var(--muted); font-size: 13px; flex: none; } .set .path { max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set a.txt, .set a.pill { display: inline-flex; align-items: center; text-decoration: none; flex: none; }
+.perm a.pill { display: inline-flex; align-items: center; text-decoration: none; }
+.set .sbtns { display: flex; gap: 8px; margin-top: 6px; }
+.set .snote { font-size: 12px; color: var(--soft); margin: 6px 0 0; } .set .snote.err { color: var(--warn); }
+.set .aibar { height: 6px; border-radius: 999px; background: var(--well-2); overflow: hidden; margin-top: 4px; }
+.set .aibar i { display: block; height: 100%; background: var(--blue); border-radius: 999px; transition: width .4s; }
+.set section { transition: box-shadow .3s, background .3s; }
+.set section.hl { border-radius: 16px; border-top-color: transparent; background: var(--blue-soft); box-shadow: 0 0 0 10px var(--blue-soft); }
+.set .txt.danger:hover { color: var(--warn); border-color: var(--warn); }
+/* Переключатель вместо галочки. */
+.set .sw { cursor: pointer; }
+.set .sw input { -webkit-appearance: none; appearance: none; flex: none; width: 42px; height: 24px; border-radius: 999px; background: var(--well-2); position: relative; cursor: pointer; transition: background .15s; }
+.set .sw input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.set .sw input:checked { background: var(--blue); } .set .sw input:checked::after { transform: translateX(18px); }
+.set .tinp { width: 76px; height: 32px; border: 1px solid var(--line); border-radius: 10px; background: var(--well); color: var(--ink); text-align: center; font: 600 14px var(--text); font-variant-numeric: tabular-nums; }
+.set .dchips, .set .seg { display: flex; gap: 4px; }
+.set .dch, .set .seg button { height: 30px; min-width: 34px; padding: 0 10px; border: 0; border-radius: 999px; background: var(--well); color: var(--muted); font-size: 13px; cursor: pointer; }
+.set .dch.on, .set .seg button.on { background: var(--blue); color: #fff; }
+.sendlist { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px 12px; margin-top: 12px; font-size: 14px; align-items: center; }
+.sendlist .k { font: 600 12px var(--text); padding: 3px 9px; border-radius: 999px; background: var(--p); color: var(--on-pastel); }
+.sendlist .c { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.offline { display: none; margin-bottom: 14px; padding: 12px 18px; border-radius: 999px; background: var(--warn-bg); color: var(--warn); }
+.offline.show { display: block; }
+
+
+/* Тёмная тема: пастель задач только акцентом — полоска, ключ, лёгкий оттенок; без кислотных заливок. */
+@media (prefers-color-scheme: dark) {
+:root:not([data-theme="light"]) .tcard { background: color-mix(in srgb, var(--p) 7%, var(--card)); color: var(--ink); padding-left: 24px; }
+:root:not([data-theme="light"]) .tcard .ta { background: var(--well-2); }
+:root:not([data-theme="light"]) .tcard .ta:hover, :root:not([data-theme="light"]) .tcard .ta.edit { background: #3a3a40; }
+:root:not([data-theme="light"]) .thead .k { background: var(--p); color: var(--on-pastel); }
+:root:not([data-theme="light"]) .tcard.gray { background: transparent; border: 1.5px dashed var(--line); }
+:root:not([data-theme="light"]) .sugg .chip { background: color-mix(in srgb, var(--p) 12%, var(--card)); color: var(--ink); border-color: color-mix(in srgb, var(--p) 70%, transparent); }
+:root:not([data-theme="light"]) .sugg .chip:hover { background: color-mix(in srgb, var(--p) 20%, var(--card)); }
+:root:not([data-theme="light"]) .sugg .chip b { color: var(--p); }
+:root:not([data-theme="light"]) .wl .k i { box-shadow: 0 0 0 2px color-mix(in srgb, var(--p) 25%, transparent); }
+}
+:root[data-theme="dark"] .tcard { background: color-mix(in srgb, var(--p) 7%, var(--card)); color: var(--ink); padding-left: 24px; }
+:root[data-theme="dark"] .tcard .ta { background: var(--well-2); }
+:root[data-theme="dark"] .tcard .ta:hover, :root[data-theme="dark"] .tcard .ta.edit { background: #3a3a40; }
+:root[data-theme="dark"] .thead .k { background: var(--p); color: var(--on-pastel); }
+:root[data-theme="dark"] .tcard.gray { background: transparent; border: 1.5px dashed var(--line); }
+:root[data-theme="dark"] .sugg .chip { background: color-mix(in srgb, var(--p) 12%, var(--card)); color: var(--ink); border-color: color-mix(in srgb, var(--p) 70%, transparent); }
+:root[data-theme="dark"] .sugg .chip:hover { background: color-mix(in srgb, var(--p) 20%, var(--card)); }
+:root[data-theme="dark"] .sugg .chip b { color: var(--p); }
+:root[data-theme="dark"] .wl .k i { box-shadow: 0 0 0 2px color-mix(in srgb, var(--p) 25%, transparent); }
+.day { position: relative; }
+.day .tools { display: flex; gap: 6px; align-items: center; margin-left: 6px; position: relative; }
+.day .tools .circle { width: 34px; height: 34px; background: var(--well); }
+.sendrow { display: flex; gap: 8px; align-items: center; margin-top: 16px; }
+.sendrow .send { margin-top: 0; flex: 1; }
+.sendrow .circle { width: 52px; height: 52px; background: var(--well); flex: none; }
+.sendrow .menu { top: auto; bottom: 60px; right: 0; left: auto; }
+.bar { display: none; }  /* логотип не нужен: место отдаём делу */
+/* Карточки отделяются от фона: шаг яркости + тонкая кромка. */
+.panel, .stack, .day, .stats, .ribbon { box-shadow: inset 0 0 0 1px var(--edge); }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 14px; margin-top: 0; align-items: start; }
+html.native .layout { margin-top: 0; }
+.lcol, .rcol { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.lcol > .ribbon { margin-bottom: 0; }
+.toprow { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 14px; }
+.toprow .stats { padding: 16px 20px; }
+/* Как приложение, а не веб-страница: окно не прокручивается. Левая колонка (дата, лента, «Ждут решения», «Разложено»)
+   прокручивается целиком, блоки в ней — в полную высоту, без своих прокруток; справа «Уйдёт в Jira» стоит на месте.
+   На узком или низком окне — обычная прокрутка страницы. */
+@media (min-width: 1100px) and (min-height: 640px) {
+  html, body { height: 100%; overflow: hidden; }
+  .wrap { height: 100vh; display: flex; flex-direction: column; padding: 14px 24px 18px; max-width: 1480px; }
+  .wrap > * { flex: none; }
+  .hero { margin: 0 0 12px; }
+  .day, .stats { padding: 16px 20px; }
+  .day h1 { font-size: 34px; }
+  .day .nav { margin-top: 12px; }
+  .sum1 .v { font-size: 32px; margin: 4px 0 12px; }
+  .ribbon { padding: 10px 14px 8px; }
+  .track { height: 34px; }
+  .b { top: 6px; bottom: 6px; }
+  .ribbon { margin-bottom: 14px; }
+  .layout { flex: 1 1 auto; min-height: 0; align-items: stretch; }
+  .lcol, .rcol { min-height: 0; }
+  .lcol { overflow-y: auto; overscroll-behavior: contain; border-radius: var(--r-xl); scrollbar-width: none; }
+  .lcol::-webkit-scrollbar { display: none; }
+  .lcol > * { flex: none; }
+  .lcol > .col { flex: 1 0 auto; }
+  .rcol > .stack { flex: 1 1 auto; }
+  .col { grid-template-rows: auto 1fr; gap: 14px; }
+  .col > .panel { min-height: 0; display: flex; flex-direction: column; padding: 18px 20px; }
+  .col > .panel > .ph { flex: none; margin-bottom: 12px; }
+  .col:not(:has(.wp)) { grid-template-rows: 1fr; }
+  .allclear { padding: 12px 16px; text-align: left; }
+  .stack { position: static; min-height: 0; display: flex; flex-direction: column; padding: 18px 20px; }
+  .stack > * { flex: none; }
+  #wls { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; align-content: start; }
+  .big { font-size: 64px; }
+  .bigsub { margin: 12px 0 16px; }
+}
+@media (max-width: 1100px) { .layout { grid-template-columns: minmax(0, 1fr); } .grid { grid-template-columns: minmax(0, 1fr); } .stack { position: static; } .hero { grid-template-columns: 1fr; } .stats { justify-content: flex-start; } }
+@media (max-width: 640px) { .wrap { padding: 14px; } .day h1 { font-size: 38px; } .stat .v { font-size: 46px; } .stats { gap: 24px; } .waits { grid-template-columns: 1fr; } .tasks { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.whead { display: none; }
+html.native .whead { display: flex; position: fixed; top: 0; left: 92px; right: 24px; height: 52px; z-index: 5; align-items: center; justify-content: space-between; pointer-events: none; }
+.wbrand { display: flex; align-items: center; gap: 4px; font: 500 21px/1 "Rubik", var(--display); letter-spacing: -.02em; color: var(--ink); }
+.wbrand svg { width: 28px; height: 28px; }
+.acctw { position: relative; pointer-events: auto; }
+.acct { display: flex; align-items: center; gap: 9px; height: 36px; padding: 0 12px 0 4px; border: 0; border-radius: 999px; background: none; font-size: 14px; color: var(--ink); cursor: pointer; }
+.acct:hover, .acct.on { background: var(--well); }
+.acct img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+.acct .cv { display: inline-flex; margin-left: -3px; color: var(--muted); transition: transform .15s; } .acct .cv svg { width: 14px; height: 14px; }
+.acct.on .cv { transform: rotate(180deg); }
+.acct.off { padding-left: 12px; color: var(--warn); }
+.acctw .am { top: 42px; right: 0; min-width: 270px; }
+/* В окне приложения страница идёт до самого верха: сверху место под кнопки окна, за эту кромку окно и таскают. */
+html.native .wrap { padding-top: 56px; }
+</style>
+</head>
+<body>
+<div class="whead"><div class="wbrand"><svg viewBox="0 0 168 165" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M95.48 0.43 29.95 17.86C24.37 19.49 18.79 25.07 17.4 30.41L0.43 93.86C-0.96 99.43 1.13 107.1 5.08 111.05L53.65 159.16C57.6 163.11 65.27 165.2 70.85 163.81L136.39 146.38C141.73 144.98 147.54 139.41 148.93 133.83L165.9 70.38C167.29 64.81 165.2 57.14 161.25 53.19L112.68 5.08C108.73 1.13 101.06-0.96 95.48 0.43ZM25.76 82.93C24.37 85.95 23.44 89.44 23.44 93.86 23.44 98.04 24.14 101.76 25.76 105.01 27.16 108.26 29.02 111.29 31.81 113.61 34.59 115.93 37.62 117.79 41.33 119.19 45.05 120.58 49 121.28 53.42 121.28 57.83 121.28 61.78 120.58 65.5 119.19 69.22 117.79 72.48 115.93 75.03 113.61 77.59 111.29 79.68 108.26 81.07 105.01 82.47 101.76 83.17 98.04 83.17 93.86 83.17 89.9 82.47 86.19 81.07 82.93 79.68 79.68 77.59 76.66 75.03 74.33 72.48 72.01 69.45 70.15 65.74 68.76 62.25 67.36 58.3 66.66 53.88 66.66L67.36 46.91C67.59 46.91 67.83 46.68 67.83 46.45 68.06 46.21 68.06 45.98 68.06 45.52 68.06 44.82 67.83 44.12 67.13 43.42 66.43 42.73 65.74 42.5 65.04 42.5H55.28C54.12 42.5 53.42 42.73 52.95 43.19 52.49 43.66 52.02 44.12 51.79 44.59L30.88 74.33C29.02 77.12 27.16 79.91 25.76 82.93ZM64.11 84.56C66.67 87.12 68.06 90.37 68.06 94.09 68.06 97.81 66.67 101.06 64.11 103.85 61.55 106.4 57.83 107.8 53.19 107.8 48.54 107.8 44.82 106.4 42.26 103.85 39.71 101.06 38.31 97.81 38.31 94.09 38.31 90.37 39.71 87.12 42.26 84.56 44.82 82 48.54 80.61 53.19 80.61 57.83 80.61 61.55 82 64.11 84.56ZM92.46 43.19C91.76 43.66 91.53 44.35 91.53 45.28L88.51 82.47C88.51 83.16 88.74 83.86 89.44 84.56 90.14 85.26 90.83 85.49 91.53 85.49H101.76C102.92 85.49 103.62 85.26 104.31 85.02 104.78 84.79 105.71 84.33 106.41 83.86 107.1 83.4 108.03 82.93 109.43 82.7 110.59 82.47 112.45 82.24 114.54 82.24 118.72 82.24 122.21 83.4 124.76 85.72 127.32 88.05 128.72 90.83 128.72 94.09 128.72 98.27 127.32 101.29 124.76 103.62 121.98 105.94 118.72 107.1 114.54 107.1 112.91 107.1 111.29 107.1 109.66 106.87 108.03 106.64 106.64 106.17 105.48 105.48 104.31 104.78 103.15 104.08 102.22 102.92 101.29 101.76 100.6 100.36 100.13 98.74 99.9 98.04 99.67 97.34 98.97 96.88 98.27 96.41 97.57 96.18 96.88 96.18H88.05C87.35 96.18 86.65 96.64 85.95 97.11 85.26 97.57 85.02 98.27 85.02 99.2 85.26 102.22 85.95 105.01 87.12 107.57 88.28 110.12 90.14 112.45 92.46 114.54 94.79 116.63 97.81 118.26 101.53 119.42 105.24 120.58 109.43 121.28 114.54 121.28 118.49 121.28 122.21 121.05 125.69 119.88 129.18 118.72 132.2 117.1 134.76 115 137.31 112.91 139.17 109.89 140.8 106.64 142.43 103.38 143.12 99.2 143.12 94.55 143.12 90.6 142.43 86.88 141.03 83.63 139.64 80.38 137.55 77.59 134.99 75.5 132.43 73.4 129.41 71.78 125.93 70.62 122.44 69.45 118.72 68.99 114.54 68.99 113.14 68.99 111.52 68.99 109.66 69.22 107.8 69.22 105.94 69.69 103.85 70.62L105.01 56.21H135.92C136.62 56.21 137.31 55.97 138.01 55.28 138.71 54.81 138.94 54.12 138.94 53.19V45.28C138.94 44.59 138.71 43.89 138.01 43.19 137.31 42.5 136.62 42.26 135.92 42.26H94.55C93.86 42.26 93.16 42.5 92.46 43.19Z"/></svg><span>tracker</span></div><div class="acctw"><button class="acct" id="acct"></button>
+  <div class="menu am" id="acctMenu"><button class="mi" data-a="settings"><i><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h7M14 6h3M3 14h3M10 14h7"/><circle cx="12" cy="6" r="2"/><circle cx="8" cy="14" r="2"/></svg></i><span>Настройки<small>Jira, напоминания, доступы</small></span></button>
+    <button class="mi" data-a="logout"><i><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3M12 6l4 4-4 4M16 10H8"/></svg></i><span>Выйти из Jira<small>Запись и история останутся</small></span></button></div></div></div>
+<div class="wrap">
+  <div class="offline" id="offline">Нет связи с трекером. Закройте окно и откройте его снова из строки меню.</div>
+  <div class="bar">
+    <div class="brand" title="65 tracker"><svg class="logo" viewBox="0 0 168 165" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" d="M95.4827 0.432335L29.9467 17.8621C24.3692 19.4889 18.7917 25.0664 17.3973 30.4115L0.432335 93.8559C-0.962046 99.4334 1.12953 107.103 5.08027 111.053L53.6512 159.159C57.602 163.11 65.2711 165.202 70.8486 163.807L136.385 146.378C141.73 144.983 147.54 139.406 148.934 133.828L165.899 70.3838C167.293 64.8063 165.202 57.1372 161.251 53.1864L112.68 5.08028C108.729 1.12953 101.06 -0.962047 95.4827 0.432335ZM25.7632 82.9323C24.3688 85.9535 23.4392 89.4394 23.4392 93.855C23.4392 98.0381 24.1364 101.756 25.7632 105.01C27.1576 108.264 29.0168 111.285 31.8055 113.609C34.5943 115.933 37.6155 117.792 41.3338 119.186C45.0522 120.581 49.0029 121.278 53.4185 121.278C57.834 121.278 61.7847 120.581 65.5031 119.186C69.2215 117.792 72.475 115.933 75.0314 113.609C77.5877 111.285 79.6793 108.264 81.0737 105.01C82.4681 101.756 83.1653 98.0381 83.1653 93.855C83.1653 89.9042 82.4681 86.1859 81.0737 82.9323C79.6793 79.6788 77.5877 76.6576 75.0314 74.3336C72.475 72.0097 69.4538 70.1505 65.7355 68.7561C62.2495 67.3617 58.2988 66.6645 53.8832 66.6645L67.3623 46.9108C67.5947 46.9108 67.8271 46.6784 67.8271 46.446C68.0595 46.2136 68.0595 45.9812 68.0595 45.5164C68.0595 44.8192 67.8271 44.122 67.1299 43.4248C66.4327 42.7277 65.7355 42.4953 65.0383 42.4953L55.2776 42.4953C54.1156 42.4953 53.4185 42.7277 52.9537 43.1924L52.9536 43.1925C52.4889 43.6573 52.0241 44.122 51.7917 44.5868L30.8759 74.3336C29.0168 77.1224 27.1576 79.9112 25.7632 82.9323ZM64.1087 84.5591C66.6651 87.1155 68.0595 90.369 68.0595 94.0874C68.0595 97.8057 66.6651 101.059 64.1087 103.848C61.5523 106.404 57.834 107.799 53.1861 107.799C48.5381 107.799 44.8198 106.404 42.2634 103.848C39.707 101.059 38.3126 97.8057 38.3126 94.0874C38.3126 90.369 39.707 87.1155 42.2634 84.5591C44.8198 82.0027 48.5381 80.6084 53.1861 80.6084C57.834 80.6084 61.5523 82.0027 64.1087 84.5591ZM92.4611 43.1924C91.7639 43.6572 91.5316 44.3544 91.5316 45.284L88.5104 82.4675C88.5104 83.1647 88.7428 83.8619 89.44 84.5591C90.1372 85.2563 90.8344 85.4887 91.5316 85.4887H101.757C102.919 85.4887 103.616 85.2563 104.313 85.0239C104.778 84.7915 105.708 84.3267 106.405 83.8619C107.102 83.3971 108.032 82.9323 109.426 82.6999C110.588 82.4675 112.447 82.2351 114.539 82.2351C118.722 82.2351 122.208 83.3971 124.764 85.7211C127.321 88.0451 128.715 90.8338 128.715 94.0874C128.715 98.2705 127.321 101.292 124.764 103.616C121.976 105.94 118.722 107.102 114.539 107.102H114.539C112.912 107.102 111.285 107.102 109.659 106.869C108.032 106.637 106.637 106.172 105.475 105.475C104.313 104.778 103.151 104.08 102.222 102.918C101.292 101.756 100.595 100.362 100.13 98.7353C99.8978 98.0381 99.6655 97.3409 98.9683 96.8761C98.2711 96.4113 97.5739 96.1789 96.8767 96.1789H88.0456C87.3484 96.1789 86.6512 96.6437 85.954 97.1085C85.2568 97.5733 85.0244 98.2705 85.0244 99.2001C85.2568 102.221 85.954 105.01 87.116 107.566C88.278 110.123 90.1372 112.447 92.4611 114.538C94.7851 116.63 97.8063 118.257 101.525 119.419C105.243 120.581 109.426 121.278 114.539 121.278C118.49 121.278 122.208 121.045 125.694 119.883C129.18 118.721 132.201 117.095 134.757 115.003C137.314 112.912 139.173 109.89 140.8 106.637C142.426 103.383 143.124 99.2001 143.124 94.5522C143.124 90.6014 142.426 86.8831 141.032 83.6295C139.638 80.376 137.546 77.5872 134.99 75.4956C132.433 73.4041 129.412 71.7773 125.926 70.6153C122.44 69.4533 118.722 68.9885 114.539 68.9885C113.144 68.9885 111.518 68.9885 109.659 69.2209C107.799 69.2209 105.94 69.6857 103.849 70.6153L105.011 56.2067H135.919C136.617 56.2067 137.314 55.9743 138.011 55.2771C138.708 54.8123 138.941 54.1151 138.941 53.1855V45.284C138.941 44.5868 138.708 43.8896 138.011 43.1924C137.314 42.4953 136.617 42.2629 135.919 42.2629H94.5527C93.8555 42.2629 93.1583 42.4953 92.4611 43.1924Z"/></svg><span>tracker</span></div>
+    <span class="sp"></span>
+  </div>
+
+  <div id="perms"></div>
+  <div class="banner" id="jiraBanner" style="display:none"><div style="flex:1"><b>Подключите Jira</b><span>Задачи будут подсказываться по названию, а часы уйдут в Jira одной кнопкой.</span></div>
+    <button class="pill" id="bannerConnect">Подключить</button></div>
+  <!-- Две колонки на всю высоту: слева дата, лента и разбор; справа итог дня и стопка «Уйдёт в Jira». -->
+  <div class="layout">
+    <div class="lcol">
+      <div class="toprow">
+    <div class="day">
+      <!-- «где я»: дата со стрелками слева, капсулы недели справа — карточка заполнена целиком -->
+      <div class="when"><h1 id="dlabel">&nbsp;</h1>
+        <div class="nav">
+          <button class="circle" id="prev" aria-label="Предыдущий день" title="Предыдущий день (←)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 4.5 6.5 10l5.5 5.5"/></svg></button>
+          <button class="circle" id="next" aria-label="Следующий день" title="Следующий день (→)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 4.5 13.5 10 8 15.5"/></svg></button>
+          <div class="tools"><button class="pill sm" id="today">Сегодня</button>
+</div>
+        </div></div>
+      <div class="wk" id="week"></div>
+    </div>
+<div class="stats"><div id="stats"></div></div>
+      </div>
+      <section class="ribbon" aria-label="Лента дня">
+    <div id="rhead" hidden></div>
+    <div class="ev" id="ev" hidden></div>
+    <div class="track" id="track"></div>
+    <div class="axis" id="axis"></div>
+  </section>
+      <div class="col" id="left"></div>
+    </div>
+    <div class="rcol">
+
+      <aside class="stack" aria-label="Уйдёт в Jira">
+      <div class="ph"><img class="jira" id="jiraIco" alt="" src="/api/icon?jira=1" onerror="this.style.display='none'"><h2>Уйдёт в Jira</h2></div>
+      <div class="big" id="stackTotal">0:00</div>
+      <div class="bigsub" id="stackSub"></div>
+      <div class="wls" id="wls"></div>
+      <div class="sendrow">
+      <button class="send" id="push"><span id="pushLabel">Залогировать</span><span class="arr"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 14 14 6M7.5 6H14v6.5"/></svg></span></button>
+      <div style="position:relative" class="morewrap">
+      <button class="circle" id="more" aria-label="Ещё"><svg viewBox="0 0 20 20" fill="currentColor"><circle cx="4" cy="10" r="1.7"/><circle cx="10" cy="10" r="1.7"/><circle cx="16" cy="10" r="1.7"/></svg></button>
+      <div class="menu" id="moreMenu">
+        <button class="mi" data-m="export"><i><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="10" height="13" rx="2"/><path d="M4 6.5V16a2 2 0 0 0 2 2h7"/><path d="M9 7.5h4M9 10.5h4"/></svg></i><span>Скопировать отчёт за день<small>Текстом — для Claude, чата или письма</small></span></button>
+        <button class="mi" data-m="copy"><i><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M3 8h14M8 8v8"/></svg></i><span>Скопировать таблицу для Tempo<small>Задачи и часы для ручного ввода</small></span></button>
+        <button class="mi" data-m="manual"><i><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="m7 10.2 2 2 4-4.4"/></svg></i><span><span id="manualLabel">Отметить день как внесённый</span><small id="manualSub">Трекер перестанет о нём напоминать</small></span></button>
+      </div>
+    </div>
+      </div>
+      <div class="snote" id="stackNote"></div><button id="copy" hidden></button><button id="manual" hidden></button>
+    </aside>
+    </div>
+  </div>
+</div>
+
+<dialog id="dlg"><div id="dlgBody"></div><div class="foot"><button class="pill" id="dlgCancel" style="background:var(--well)">Отмена</button><button class="pill blue" id="dlgOk">OK</button></div></dialog>
+<dialog id="connect">
+  <h2>Подключить Jira</h2>
+  <p>Один раз. Токен хранится в Связке ключей macOS, не в файлах.</p>
+  <label class="field"><span>Адрес Jira</span><input id="cBase" spellcheck="false" placeholder="https://jira.company.com"></label>
+  <label class="field"><span>Логин</span><input id="cUser" autocomplete="username" spellcheck="false"></label>
+  <label class="field"><span>Personal Access Token</span><input id="cToken" type="password" autocomplete="off" placeholder="Вставьте токен"></label>
+  <p>Где взять: <a id="cLink" target="_blank" rel="noopener" style="color:var(--blue)">Jira → Профиль → Personal Access Tokens</a> → Create token.</p>
+  <div class="cnote" id="cNote"></div>
+  <div class="err" id="cErr"></div>
+  <div class="foot"><button class="pill" id="cCancel" style="background:var(--well)">Отмена</button><button class="pill blue" id="cOk">Подключить</button></div>
+</dialog>
+<dialog id="settings" class="set">
+  <div class="shead"><h2>Настройки</h2><button class="sclose" id="setClose" title="Закрыть (Esc)" aria-label="Закрыть"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9"/></svg></button></div>
+  <div id="setBody"></div>
+</dialog>
+<datalist id="issueList"></datalist>
+<div class="toast" id="toast"></div>
+<div class="tip" id="tip"></div>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+if (window.webkit?.messageHandlers?.tt) document.documentElement.classList.add("native");  // окно приложения: шапка — системная
+{ const t = new URLSearchParams(location.search).get("theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const WD = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
+const WDL = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+const MON = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+const store = { get(k, d) { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+const S = { date: new URLSearchParams(location.search).get("date") || iso(new Date()), day: null, issues: [], sel: null, view: store.get("tt-view", "groups"), slot: {} };
+const SPARK = `<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 1.8c.4 3.9 2.3 5.8 6.2 6.2-3.9.4-5.8 2.3-6.2 6.2-.4-3.9-2.3-5.8-6.2-6.2 3.9-.4 5.8-2.3 6.2-6.2Z"/><path d="M16 12.6c.2 1.8 1 2.6 2.8 2.8-1.8.2-2.6 1-2.8 2.8-.2-1.8-1-2.6-2.8-2.8 1.8-.2 2.6-1 2.8-2.8Z" opacity=".7"/></svg>`;
+const DOTS = `<svg viewBox="0 0 20 20" fill="currentColor"><circle cx="4" cy="10" r="1.7"/><circle cx="10" cy="10" r="1.7"/><circle cx="16" cy="10" r="1.7"/></svg>`;
+const CHEV = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m4 6 4 4 4-4"/></svg>`;
+const PEN = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2.5 13.5 5.5 6 13H3v-3z"/></svg>`;
+const CHECK = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m4.5 10.5 3.5 3.5 7.5-8"/></svg>`;
+
+function iso(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function parseIso(s) { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); }
+function addDays(s, n) { const d = parseIso(s); d.setDate(d.getDate() + n); return iso(d); }
+const mins = s => Math.round(s / 60);
+function hmm(s) { const m = mins(s); return Math.floor(m / 60) + ":" + String(m % 60).padStart(2, "0"); }
+function dur(s) { const m = mins(s), h = Math.floor(m / 60), r = m % 60; return h && r ? `${h} ч ${r} м` : h ? `${h} ч` : `${r} м`; }
+function clock(ts) { const d = new Date(ts * 1000); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
+const plural = (n, a, b, c) => n % 10 === 1 && n % 100 !== 11 ? a : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? b : c;
+const summary = k => (S.issues.find(i => i.key === k) || {}).summary || "";
+
+/* Цвет задачи: у ключа свой слот из 8 пастельных; в одном дне две задачи одного цвета не получают. */
+function hashSlot(k) { let h = 0; for (const c of k) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h % 8; }
+function assignColors(day) {
+  const secs = {};
+  for (const b of day.blocks) { const k = b.issue || (b.hint || {}).issue || (b.suggestion || {}).issue; if (k) secs[k] = (secs[k] || 0) + b.seconds; }
+  for (const w of day.proposal.worklogs) secs[w.issue] = (secs[w.issue] || 0) + w.seconds;
+  const used = new Set(); S.slot = {};
+  for (const k of Object.keys(secs).sort((a, b) => secs[b] - secs[a])) {
+    let s = hashSlot(k); for (let i = 0; i < 8 && used.has(s); i++) s = (s + 1) % 8; used.add(s); S.slot[k] = s + 1;
+  }
+}
+const slot = k => S.slot[k] || hashSlot(k) + 1;
+const pastel = k => `var(--p${slot(k)})`;
+const icon = (bundle, label, cls = "ico") => bundle ? `<img class="${cls}" src="/api/icon?b=${encodeURIComponent(bundle)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'${cls} ph-i',textContent:'${esc((label || "?")[0]).toUpperCase()}'}))">`
+  : `<span class="${cls} ph-i">${esc((label || "?").replace(/^Claude Code: /, "")[0] || "?").toUpperCase()}</span>`;
+
+async function api(path, body) {
+  const opt = body ? { method: "POST", headers: { "Content-Type": "application/json", "X-TT": "1" }, body: JSON.stringify({ date: S.date, ...body }) } : {};
+  let r;
+  try { r = await fetch(path, opt); } catch (e) { $("#offline").classList.add("show"); throw new Error("Нет связи с трекером"); }
+  $("#offline").classList.remove("show");
+  const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status); return j;
+}
+function toast(msg, err) { const t = $("#toast"); t.textContent = msg; t.className = "toast" + (err ? " err" : ""); t.style.display = "block";
+  clearTimeout(t._h); t._h = setTimeout(() => t.style.display = "none", err ? 7000 : 2600); }
+function ask(html, ok = "OK", cancel = "Отмена") { return new Promise(res => { $("#dlgBody").innerHTML = html; $("#dlgOk").textContent = ok;
+  $("#dlgCancel").style.display = cancel ? "" : "none"; $("#dlgCancel").textContent = cancel || "";
+  const d = $("#dlg"); d.showModal(); $("#dlgOk").onclick = () => { d.close(); res(true); }; $("#dlgCancel").onclick = () => { d.close(); res(false); }; }); }
+async function busy(btn, fn, label) { const t = btn ? btn.innerHTML : ""; if (btn) { btn.disabled = true; if (label) btn.textContent = label; }
+  try { await fn(); } catch (e) { toast(e.message, true); } finally { if (btn && btn.isConnected) { btn.disabled = false; btn.innerHTML = t; } } }
+
+async function load(date) {
+  if (date) S.date = date;
+  history.replaceState(null, "", location.pathname + "?date=" + S.date);
+  const [day, week] = await Promise.all([api("/api/day?date=" + S.date), api("/api/week?date=" + S.date)]);
+  S.day = day; renderWeek(week); render(); renderPerms();
+}
+const native = msg => window.webkit?.messageHandlers?.tt?.postMessage(msg);
+// Каких доступов нет — показываем сразу, при каждом возвращении в окно проверяем снова.
+async function renderPerms() {
+  if (window.webkit?.messageHandlers?.tt) { native({ action: "refresh" }); await new Promise(r => setTimeout(r, 300)); }  // приложение перепроверит доступы
+  let miss = []; try { const st = await api("/api/status"); miss = st.missing || [];
+    if (S.build && st.build && st.build !== S.build) return location.reload();  // приложение обновилось — подхватываем новую страницу
+    S.build = st.build; } catch (e) {}
+  const nat = !!window.webkit?.messageHandlers?.tt;
+  $("#perms").innerHTML = miss.map((m, i) => `<div class="perm"><div><b>${esc(m.title)}</b>${esc(m.text)}</div>
+    ${nat ? `<button class="pill" data-perm="${i}">${esc(m.button)}</button>` : `<a class="pill" href="${PANE[m.action]}">${esc(m.button)}</a>`}</div>`).join("");
+  $$("[data-perm]").forEach(b => b.onclick = () => { const m = miss[+b.dataset.perm]; native({ action: m.action, bundle: m.bundle }); });
+}
+addEventListener("focus", renderPerms);
+// Пока плашка висит — проверяем каждые 2 с, чтобы она ушла сразу после выдачи доступа.
+setInterval(() => { if ($("#perms").children.length) renderPerms(); }, 2000);
+function setDay(d) { if (!d) return; S.day = d; render(); refreshWeek(); }
+async function refreshWeek() { try { renderWeek(await api("/api/week?date=" + S.date)); } catch (e) {} }
+function render() { assignColors(S.day); S.groups = groupBlocks(S.day.blocks); renderHero(); renderRibbon(); renderLeft(); renderStack(); }
+
+/* ---------- герой ---------- */
+function renderHero() {
+  const day = S.day, p = day.proposal, d = parseIso(day.date), isToday = day.date === iso(new Date());
+  $("#dlabel").innerHTML = `${WDL[d.getDay()]}<small>${d.getDate()} ${MON[d.getMonth()]}</small>`;
+  document.title = `${d.getDate()} ${MON[d.getMonth()]} · 65 tracker`;
+  const pushed = p.worklogs.length && p.worklogs.every(w => w.status === "pushed" || w.status === "in_jira");
+  // Одна главная цифра — сколько работал; под ней полоса: что уже в задачах, что ждёт решения, что личное.
+  if (!day.blocks.length) $("#stats").innerHTML = isToday && !S.st?.paused
+    ? `<div class="sum1"><div class="srow"><span class="l">За день</span><span class="span rec"><i></i>запись идёт</span></div><div class="v">0:00</div><div class="mixl"><span>первые минуты появятся скоро</span></div></div>`
+    : `<div class="sum1"><div class="srow"><span class="l">За день</span></div><div class="v">—</div><div class="mixl"><span>${day.tracked ? "активности не было" : "трекер не работал"}</span></div></div>`;
+  else {
+    // По задачам — в стопке справа, по времени — на ленте; здесь только то, что в задачи не попадает.
+    // Те же цифры, что в карточках «Разложено»: личное и неразобранное — из предложения, остальное — задачи.
+    const b0 = day.blocks[0], b1 = day.blocks[day.blocks.length - 1], sum = { s: p.skipped || 0, w: p.unassigned || 0 };
+    sum.t = Math.max(0, p.total - sum.s - sum.w);
+    const all = sum.t + sum.s + sum.w || 1, pc = v => (v / all * 100).toFixed(1) + "%";
+    $("#stats").innerHTML = `<div class="sum1"><div class="srow"><span class="l">За день</span><span class="span">${clock(b0.start)} – ${isToday ? "сейчас" : clock(b1.end)}</span></div>
+      <div class="v">${hmm(p.total)}</div>
+      <div class="mix"><i class="t" style="width:${pc(sum.t)}"></i><i class="w" style="width:${pc(sum.w)}"></i><i class="s" style="width:${pc(sum.s)}"></i></div>
+      <div class="mixl"><span><i class="t"></i>задачи ${hmm(sum.t)}</span>${sum.w >= 60 ? `<span><i class="w"></i>ждут ${hmm(sum.w)}</span>` : ""}${sum.s >= 60 ? `<span><i class="s"></i>личное ${hmm(sum.s)}</span>` : ""}</div></div>`;
+  }
+  $("#today").style.display = isToday ? "none" : ""; $("#next").disabled = isToday; $("#next").style.opacity = isToday ? .35 : 1;
+  $("#jiraBanner").style.display = day.jira_configured ? "none" : "";
+  $("#acct").className = "acct" + (day.jira_configured ? "" : " off");
+  $("#acct").innerHTML = day.jira_configured
+    ? `<img src="/api/jira/avatar" alt="" onerror="this.remove()">${esc(day.jira_user || "Jira")}<i class="cv">${CHEV}</i>` : `Подключить Jira`;
+}
+/* Неделя — капсулы: заливка = сколько работал из 8 часов. Открытый день залит белым. Под капсулами — итог недели из 40 ч. */
+function renderWeek(week) {
+  const done = week.reduce((x, w) => x + (w.total || 0), 0), NORM = 8 * 3600;
+  $("#week").innerHTML = `<div class="dots">${week.map(w => {
+    const d = parseIso(w.date), lab = WD[d.getDay()];
+    if (w.future) return `<span class="dd future"><span class="dl">${lab}</span><span class="cap"></span><b>&nbsp;</b></span>`;
+    const tot = w.total || 0, share = Math.min(1, tot / NORM);
+    const jira = w.status === "manual" || (w.pushed && !w.needs_review) ? "в Jira" : "ещё не в Jira";
+    const st = tot ? `${hmm(tot)} из 8:00 · ${jira}` : "нет записи";
+    return `<button class="dd ${w.date === S.date ? "sel" : ""}" data-d="${w.date}" title="${lab} ${d.getDate()}: ${st}">
+      <span class="dl">${lab}</span><span class="cap"><i style="height:${(share * 100).toFixed(1)}%"></i></span>
+      <b>${tot ? hmm(tot) : "—"}</b></button>`; }).join("")}</div><div class="wcap">неделя <b>${Math.round(done / 3600)} из 40 ч</b></div>`;
+  $$("#week button.dd").forEach(b => b.onclick = () => { S.sel = null; load(b.dataset.d); });
+}
+
+/* ---------- лента ---------- */
+const sugOf = b => (b.suggestion && b.suggestion.issue) ? b.suggestion.issue : (b.hint || {}).issue;
+function renderRibbon() {
+  const day = S.day, bl = day.blocks, track = $("#track"), ev = $("#ev"), axis = $("#axis");
+  const p = day.proposal;
+  $("#rhead").innerHTML = `<b>Лента дня</b><span class="sp"></span>` + [
+    bl.some(b => !b.issue && !b.skip && !b.split && sugOf(b)) ? `<span class="lg"><i style="background:repeating-linear-gradient(135deg,var(--soft) 0 3px,transparent 3px 7px);box-shadow:inset 0 0 0 1px var(--soft)"></i>подсказка в цвете задачи</span>` : "",
+    bl.some(b => !b.issue && !b.skip && !b.split && !sugOf(b)) ? `<span class="lg"><i style="background:var(--wait)"></i>без задачи</span>` : "",
+    bl.some(b => b.split) ? `<span class="lg"><i style="background:var(--soft)"></i>по задачам дня</span>` : "",
+    bl.some(b => b.skip) ? `<span class="lg"><i style="background:repeating-linear-gradient(90deg,var(--soft) 0 3px,transparent 3px 6px)"></i>личное</span>` : "",
+  ].join("");
+  if (!bl.length) { track.innerHTML = `<span class="tempty">Лента дня заполнится по ходу работы</span>`; ev.innerHTML = ""; axis.innerHTML = ""; return; }
+  const evs = day.events.filter(e => e.end - e.start <= 4 * 3600);
+  const all = bl.map(b => [b.start, b.end]).concat(evs.map(e => [e.start, e.end]));
+  let a = Math.min(...all.map(x => x[0])), z = Math.max(...all.map(x => x[1]));
+  a = Math.floor(a / 3600) * 3600; z = Math.ceil(z / 3600) * 3600; if (z - a < 6 * 3600) z = a + 6 * 3600;
+  const X = t => ((t - a) / (z - a) * 100).toFixed(3) + "%", W = (s, e) => Math.max(.25, (e - s) / (z - a) * 100).toFixed(3) + "%";
+  const g = S.sel && groupOf(S.sel), selIds = g ? new Set(g.blocks.map(b => b.id)) : null, tw = track.clientWidth || 900;
+  // Соседние куски одного вида склеиваем в один отрезок — без «гребёнки» из мелких полосок.
+  const kindOf = b => b.issue ? "i:" + b.issue : b.skip ? "skip" : b.split ? "split" : sugOf(b) ? "h:" + sugOf(b) : "wait";
+  const segs = [];
+  for (const b of bl) { const k = kindOf(b), last = segs[segs.length - 1];
+    if (last && last.k === k && b.start - last.end < 90) { last.end = b.end; last.blocks.push(b); } else segs.push({ k, start: b.start, end: b.end, blocks: [b] }); }
+  S.segs = segs;
+  track.innerHTML = segs.map((sg, i) => {
+    const b0 = sg.blocks[0], [kind, key] = sg.k.split(/:(.*)/s);
+    let cls = "b", style = `left:calc(${X(sg.start)} + 1px);width:calc(${W(sg.start, sg.end)} - 2px);`, txt = "";
+    if (kind === "i") { style += `background:${pastel(key)};`; if ((sg.end - sg.start) / (z - a) * tw > key.length * 7 + 18) txt = key; }
+    else if (kind === "h") { cls += " hint"; style += `--c:${pastel(key)};`; }
+    else cls += " " + (kind === "skip" ? "skip" : kind === "split" ? "splitb" : "wait");
+    if (selIds) cls += sg.blocks.some(b => selIds.has(b.id)) ? " on" : " dim";
+    return `<div class="${cls}" data-seg="${i}" style="${style}">${esc(txt)}</div>`;
+  }).join("") + (day.date === iso(new Date()) && Date.now() / 1000 < z ? `<div class="now" style="left:${X(Date.now() / 1000)}"></div>` : "");
+  ev.innerHTML = evs.map(e => `<div style="left:${X(e.start)};max-width:${W(e.start, e.end)}" title="${esc(e.title)} · ${clock(e.start)}–${clock(e.end)}">${esc(e.title)}</div>`).join("");
+  let ax = ""; const step = (z - a) > 12 * 3600 ? 2 : 1;
+  // «Сейчас» — синим в строке часов, а не плашкой над лентой; ближайшая метка часа уступает ему место.
+  const nowT = day.date === iso(new Date()) && Date.now() / 1000 < z ? Date.now() / 1000 : null;
+  for (let t = a; t <= z; t += 3600 * step) if (!nowT || Math.abs(t - nowT) / (z - a) * tw > 46) ax += `<span style="left:${X(t)}">${clock(t)}</span>`;
+  if (nowT) ax += `<span class="nowlab" style="left:${X(nowT)}">${clock(nowT)}</span>`;
+  axis.innerHTML = ax;
+  $$(".b", track).forEach(el => {
+    const sg = S.segs[+el.dataset.seg], b = sg.blocks[0];
+    el.onclick = () => { const g = S.groups.find(g => g.blocks.includes(b)); select(g ? g.key : null); };
+    el.onmousemove = e => { const t = $("#tip"); t.style.display = "block"; t.style.left = Math.min(e.clientX + 14, innerWidth - 350) + "px"; t.style.top = (e.clientY + 18) + "px";
+      const hs = sugOf(b), acc = new Map(); for (const x of sg.blocks) for (const c of x.contexts) acc.set(c.label, (acc.get(c.label) || 0) + c.seconds);
+      const secs = sg.blocks.reduce((s, x) => s + x.seconds, 0);
+      t.innerHTML = `<b>${clock(sg.start)}–${clock(sg.end)}</b> · ${dur(secs)}<br>` +
+        (b.issue ? `<b>${esc(b.issue)}</b> ${esc(summary(b.issue))}` : b.skip ? "личное" : b.split ? "по задачам дня" : hs ? `подсказка: <b>${esc(hs)}</b> ${esc(summary(hs))}` : "без задачи") + "<br>" +
+        [...acc].sort((x, y) => y[1] - x[1]).slice(0, 4).map(([l, v]) => `<span class="m">${esc(l)} · ${dur(v)}</span>`).join("<br>"); };
+    el.onmouseleave = () => $("#tip").style.display = "none";
+  });
+}
+function select(key) {
+  S.sel = S.sel === key ? null : key; renderRibbon();
+  $$("[data-k]").forEach(el => el.classList.toggle("sel", el.dataset.k === S.sel));
+  if (S.sel) $(`[data-k="${CSS.escape(S.sel)}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+/* ---------- группы активностей ---------- */
+function groupBlocks(bl) {
+  const m = new Map();
+  for (const b of bl) {
+    const k = b.theme || b.context_key || b.id;
+    let g = m.get(k);
+    if (!g) { g = { key: k, blocks: [], seconds: 0, issues: new Set(), skip: true, split: true, suggestion: null, hint: null, members: new Map() }; m.set(k, g); }
+    g.blocks.push(b); g.seconds += b.seconds; g.issues.add(b.issue || "");
+    if (!b.skip) g.skip = false; if (!b.split) g.split = false;
+    if (!g.suggestion && b.suggestion && b.suggestion.issue && !b.issue) g.suggestion = b.suggestion;
+    if (b.hint && !b.issue && (!g.hint || (g.hint.here && !b.hint.here))) g.hint = b.hint;
+    const ck = b.context_key || b.id; let mb = g.members.get(ck);
+    if (!mb) { mb = { key: ck, label: b.label, kind: b.kind, icon: b.icon, seconds: 0, blocks: [] }; g.members.set(ck, mb); }
+    mb.seconds += b.seconds; mb.blocks.push(b);
+  }
+  return [...m.values()].map(g => {
+    const ms = [...g.members.values()].sort((a, b) => b.seconds - a.seconds), open = g.blocks.filter(b => !b.issue && !b.skip && !b.split);
+    return { ...g, label: ms[0].label, kind: ms[0].kind, icon: ms[0].icon, others: ms.slice(1), issue: g.issues.size === 1 ? [...g.issues][0] : null,
+      open: open.length > 0, openSeconds: open.reduce((s, b) => s + b.seconds, 0) };
+  }).sort((a, b) => (b.open - a.open) || (b.seconds - a.seconds));
+}
+function proposal(g) {
+  if (g.suggestion) return { issue: g.suggestion.issue, why: (g.suggestion.reason || "").replace(/^локально: /, "по смыслу: "), ai: true };
+  if (g.hint && !g.hint.here) return { issue: g.hint.issue, why: g.hint.reason };
+  if (g.hint) { const blocks = g.blocks.filter(b => !b.issue && b.hint && b.hint.here && b.hint.issue === g.hint.issue); return { issue: g.hint.issue, why: g.hint.reason, blocks }; }
+  return null;
+}
+function groupOf(key) { return (S.groups || []).find(g => g.key === key); }
+const shortWhy = w => (w || "").replace(/«(?:Claude Code: )?([^»—]+?)(?: — [^»]*)?»/g, "«$1»");
+
+/* ---------- левая колонка ---------- */
+function renderLeft() {
+  const box = $("#left"), day = S.day;
+  if (!day.blocks.length) {
+    const today = S.day.date === iso(new Date());
+    box.innerHTML = today ? `<section class="panel first"><h2>День только начался</h2>
+      <p>Работайте как обычно — трекер сам записывает, в каком приложении, файле и на каком сайте вы были. Первые активности появятся здесь через пару минут.</p>
+      <ol><li><b>Записывает</b><span>окна, сайты и созвоны — без таймеров</span></li>
+        <li><b>Раскладывает</b><span>время по задачам Jira и подсказывает, куда отнести остальное</span></li>
+        <li><b>Отправляет</b><span>вечером проверьте стопку справа и нажмите «Залогировать»</span></li></ol></section>`
+      : `<section class="panel"><div class="allclear">${day.tracked ? "В этот день активности не было" : "Трекер в этот день не работал"}</div></section>`;
+    return; }
+  const open = S.groups.filter(g => g.open), props = open.filter(proposal), noSug = open.length - props.length;
+  let h = !open.length ? "" : `<section class="panel wp"><div class="ph"><h2>Ждут решения</h2>${open.length ? `<span class="count">${open.length} · ${hmm(open.reduce((s, g) => s + g.openSeconds, 0))}</span>` : ""}<span class="sp"></span>
+    ${noSug ? `<button class="pill sm ai" id="local" title="Нейросеть на этом Маке сравнит активности без подсказки с задачами Jira и предложит подходящие. Без интернета и токенов">${SPARK}Подобрать задачу для ${noSug} ${plural(noSug, "активности", "активностей", "активностей")}</button>` : ""}
+    ${props.length ? `<button class="pill sm dark" id="acceptAll">Принять ${props.length} ${plural(props.length, "подсказку", "подсказки", "подсказок")}</button>` : ""}</div>`;
+  if (open.length) h += `<div class="waits">${open.map(waitCard).join("")}</div></section>`;
+  h += `<section class="panel"><div class="ph"><h2>Разложено</h2><span class="sp"></span><div class="seg"><button data-view="groups">По задачам</button><button data-view="chrono">По времени</button></div></div>
+    <div id="done"></div></section>`;
+  box.innerHTML = h;
+  bindWaits();
+  $$(".seg button").forEach(b => { b.classList.toggle("on", b.dataset.view === S.view); b.onclick = () => { S.view = b.dataset.view; store.set("tt-view", S.view); renderLeft(); }; });
+  if (S.view === "chrono") renderChrono($("#done")); else renderDone($("#done"));
+}
+
+function waitCard(g) {
+  const pr = proposal(g), n = g.blocks.filter(b => !b.issue && !b.skip && !b.split);
+  const why = pr ? shortWhy(pr.why) + (pr.blocks && pr.blocks.length < n.length ? ` · ${pr.blocks.length} из ${n.length} отрезков` : "") : "";
+  return `<div class="wcard ${S.sel === g.key ? "sel" : ""}" data-k="${esc(g.key)}">
+    <div class="wtop" draggable="true" title="Потяните на задачу в «Разложено» или в «Уйдёт в Jira»">${icon(g.icon, g.label)}<div class="t"><div class="name">${esc(g.label.replace(/^Claude Code: /, ""))}</div>
+      ${n.length > 1 ? `<div class="meta">${n.length} ${plural(n.length, "раз", "раза", "раз")} за день</div>` : ""}</div></div>
+    <div class="dur">${hmm(g.openSeconds)}</div>
+    <div class="sugg">${pr ? `<button class="chip" data-act="change" style="--p:${pastel(pr.issue)}" title="${pr.ai ? "Подсказала нейросеть" : "Подсказка"}: ${esc(why)}. Нажмите, чтобы выбрать другую задачу">${pr.ai ? `<i class="spark">${SPARK}</i>` : ""}<b>${esc(pr.issue)}</b><span>${esc(summary(pr.issue))}</span><i class="cv">${CHEV}</i></button>
+      <button class="yes" data-act="hint">${CHECK}Да, сюда</button>` : `<input list="issueList" class="solo" placeholder="Найти задачу в Jira" spellcheck="false">`}
+      <span class="mw"><button class="more" data-act="more" title="Не задача" aria-label="Не задача">${DOTS}</button>
+        <div class="menu wm"><button class="mi" data-act="split"><i><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v5M10 8l-5 5v4M10 8l5 5v4"/></svg></i><span>Разделить между задачами<small>Для переписки и почты — пропорционально</small></span></button>
+          <button class="mi" data-act="skip"><i><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7" r="3"/><path d="M4.5 17a5.5 5.5 0 0 1 11 0"/></svg></i><span>Отметить как личное<small>Не уходит в Jira</small></span></button></div></span></div>
+  </div>`;
+}
+
+function bindWaits() {
+  $$(".wcard").forEach(el => {
+    // Выбор всегда запоминается — завтра эта активность разложится сама. Кроме подсказки «по соседству»: она только про эти интервалы.
+    const g = groupOf(el.dataset.k), pr0 = proposal(g), rem = { checked: !(pr0 && pr0.blocks) };
+    const send = (issue, skip, split) => assignGroup(g, issue, skip, split, rem.checked).then(setDay).catch(e => toast(e.message, true));
+    $$("input[list]", el).forEach(inp => { inp.onchange = () => { const v = resolveIssueInput(inp.value); if (v !== false && v) send(v, false, false); };
+      inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); inp.onchange(); } }; });
+    // «•••» — меню «не задача»: разделить или личное.
+    $('[data-act="more"]', el).onclick = e => { e.stopPropagation(); const m = $(".wm", el), was = m.classList.contains("open");
+      $$(".wm.open").forEach(x => x.classList.remove("open")); m.classList.toggle("open", !was); };
+    // Подсказка — это выбор задачи: нажатие открывает поиск другой, а принимает только «Да, сюда».
+    const ch = $('[data-act="change"]', el);
+    if (ch) ch.onclick = () => {
+      ch.outerHTML = `<input list="issueList" class="solo" placeholder="Найти задачу в Jira" spellcheck="false">`;
+      $(".yes", el).hidden = true;
+      const inp = $(".sugg input", el); inp.focus();
+      inp.onchange = () => { const v = resolveIssueInput(inp.value); if (v) send(v, false, false); };
+      inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); inp.onchange(); } if (e.key === "Escape") renderLeft(); };
+      // Нажали случайно и ушли — подсказка возвращается (с паузой, чтобы успел сработать выбор из списка).
+      inp.onblur = () => setTimeout(() => { if (inp.isConnected && !inp.value.trim()) renderLeft(); }, 200);
+    };
+    $$('[data-act="hint"]', el).forEach(b => b.onclick = () => accept(g, proposal(g), rem.checked).then(setDay).catch(e => toast(e.message, true)));
+    $('[data-act="split"]', el).onclick = () => send(null, false, true);
+    $('[data-act="skip"]', el).onclick = () => send(null, true, false);
+    el.onclick = e => { if (!e.target.closest("input,button,label")) select(g.key); };
+  });
+  $("#acceptAll")?.addEventListener("click", e => busy(e.currentTarget, async () => {
+    const props = S.groups.filter(g => g.open && proposal(g)); let d = null;
+    for (const g of props) d = await accept(g, proposal(g), true);
+    setDay(d); toast(`Принято подсказок: ${props.length}`); }, "Принимаю…"));
+  $("#local")?.addEventListener("click", async e => { const b = e.currentTarget; if (!await aiReady()) return; busy(b, async () => { const r = await api("/api/local_suggest", {}); setDay(r.day);
+    toast(r.result.saved ? `Подобрано: ${r.result.saved} из ${r.result.asked}` : r.result.asked ? "Уверенных совпадений нет, выберите задачу сами" : "Подбирать нечего"); }, "Подбираю…"); });
+}
+
+/* Разложено: пастельная карточка на задачу, внутри — активности с иконками. */
+function renderDone(box) {
+  const by = new Map();
+  for (const g of S.groups) for (const mb of g.members.values()) {
+    for (const b of mb.blocks) {
+      const k = b.issue || (b.skip ? "~skip" : b.split ? "~split" : null); if (!k) continue;
+      if (!by.has(k)) by.set(k, { key: k, seconds: 0, acts: new Map() });
+      const t = by.get(k); t.seconds += b.seconds;
+      const a = t.acts.get(mb.key) || { key: mb.key, g, label: mb.label, icon: mb.icon, seconds: 0 }; a.seconds += b.seconds; t.acts.set(mb.key, a);
+    }
+  }
+  const tasks = [...by.values()].sort((a, b) => (a.key[0] === "~") - (b.key[0] === "~") || b.seconds - a.seconds);
+  if (!tasks.length) { box.innerHTML = `<div class="allclear">Пока ничего не разложено</div>`; return; }
+  const cards = tasks.map(t => {
+    const sys = t.key[0] === "~", name = t.key === "~skip" ? "Личное, не логируется" : t.key === "~split" ? "Делится между задачами" : summary(t.key);
+    const P = S.day.proposal, fold = (P.folded || []).find(f => f.issue === t.key), wl = P.worklogs.find(w => w.issue === t.key);
+    const autoN = t.key === "~split" ? [...t.acts.values()].filter(a => a.g.blocks.some(b => b.auto_split)).length : 0;
+    const note = t.key === "~skip" ? `<div class="tnote">Не уходит в Jira. Чтобы записать в задачу, откройте список и нажмите на активность</div>` : t.key === "~split" ? `<div class="tnote">${autoN ? "Мелочь без задачи короче 15 минут делится между задачами сама. " : ""}Чтобы записать активность в конкретную задачу, откройте список и нажмите на неё</div>`
+      : sys ? "" : fold ? `<div class="tnote">Меньше ${Math.round(P.min_sec / 60)} мин — отдельно не логируется, время добавлено ${fold.into ? `к ${esc(fold.into)}` : "к другим задачам дня"}</div>`
+      : wl && Math.abs(wl.seconds - t.seconds) >= 60 ? `<div class="tnote">${wl.status === "pushed" || wl.status === "in_jira" ? `В Jira залогировано ${hmm(wl.seconds)}`
+        : wl.edited ? `В Jira уйдёт ${hmm(wl.seconds)}: вы поправили время` : `В Jira уйдёт ${hmm(wl.seconds)}: округлено до 15 мин`}</div>` : "";
+    return `<div class="tcard ${sys ? "gray" : ""}" data-drop="${esc(t.key)}" style="${sys ? "" : `--p:${pastel(t.key)}`}">
+      <div class="thead" data-open>${sys ? "" : `<span class="k">${esc(t.key)}</span>`}<span class="s">${esc(name)}</span><span class="v">${hmm(t.seconds)}</span></div>${note}
+      <div class="tfoot"><span class="ticons">${[...t.acts.values()].sort((a, b) => b.seconds - a.seconds).slice(0, 6).map(a => icon(a.icon, a.label)).join("")}</span>
+        <button class="toggle" aria-expanded="false"><span>Показать ${t.acts.size} ${plural(t.acts.size, "активность", "активности", "активностей")}</span>${CHEV}</button></div>
+      <div class="tacts" hidden>${[...t.acts.values()].sort((a, b) => b.seconds - a.seconds).map(a => `<div class="ta" draggable="true" data-ta="${esc(a.key)}" data-t="${esc(t.key)}" title="Перетащите на другую задачу или нажмите, чтобы выбрать">
+        ${icon(a.icon, a.label)}<span class="n">${esc(a.label.replace(/^Claude Code: /, ""))}</span><span class="d">${hmm(a.seconds)}</span>
+        ${sys ? `<button class="tab ai" data-ai title="Нейросеть на этом Маке подберёт задачу из Jira">${SPARK}В задачу</button>`
+              : `<button class="tab" title="Перенести в другую задачу">${PEN}</button>`}<button class="x" title="Свернуть (Esc)">${CHEV}</button></div>`).join("")}</div></div>`; });
+  // Две независимые колонки (карточки по очереди слева-справа): раскрытая карточка не оставляет дыру рядом
+  // и не перескакивает в другую колонку, как было бы с CSS-колонками.
+  box.innerHTML = `<div class="tasks">${[0, 1].map(c => `<div class="tcol">${cards.filter((_, i) => i % 2 === c).join("")}</div>`).join("")}</div>`;
+  $$(".ta", box).forEach(el => el.onclick = e => { const ai = e.target.closest("[data-ai]");
+    if (e.target.closest(".x")) { e.stopPropagation(); return closeAct(el); }
+    if (ai) { e.stopPropagation(); const { mb, blocks } = actOf(el); aiPick(ai, mb, blocks); } else editAct(el); });
+  $$(".tcard", box).forEach(c => { const tg = $(".toggle", c), lbl = $(".toggle span", c).textContent;
+    const flip = () => { const l = $(".tacts", c); l.hidden = !l.hidden; tg.setAttribute("aria-expanded", !l.hidden);
+      $(".ticons", c).hidden = !l.hidden; $(".toggle span", c).textContent = l.hidden ? lbl : "Свернуть"; };
+    tg.onclick = flip; $("[data-open]", c).onclick = flip; });
+}
+function actOf(el) {
+  const g = (S.groups || []).find(g => g.members.has(el.dataset.ta)), mb = g.members.get(el.dataset.ta), tk = el.dataset.t;
+  return { mb, tk, blocks: mb.blocks.filter(b => (b.issue || (b.skip ? "~skip" : b.split ? "~split" : "")) === tk) };
+}
+// Снимаем привязку (и запомненное правило), затем локальная нейросеть ищет задачу — подсказка появится в «Ждут решения».
+async function aiPick(btn, mb, blocks) {
+  if (!await aiReady()) return;
+  return busy(btn, async () => {
+    await api("/api/assign", { issue: null, remember: true, context_key: mb.key, label: mb.label, intervals: blocks.map(b => [b.start, b.end]) });
+    const r = await api("/api/local_suggest", {}); setDay(r.day);
+    toast(r.result.saved ? "Есть подсказка — проверьте в «Ждут решения»" : "Подходящей задачи не нашлось — активность ждёт решения, выберите задачу сами");
+  }, "Подбираю…");
+}
+// Закрыть правку активности — убрать форму, строка снова обычная (карточка остаётся раскрытой).
+function closeAct(el) { el.classList.remove("edit"); $(".pick", el)?.remove(); }
+document.addEventListener("keydown", e => { if (e.key === "Escape") $$(".ta.edit").forEach(closeAct); });
+function editAct(el) {
+  if (el.classList.contains("edit")) return;
+  $$(".ta.edit").forEach(closeAct);
+  const { mb, tk, blocks } = actOf(el);
+  el.classList.add("edit");
+  // Поле задачи на всю ширину. Ниже — «✦ Подобрать задачу» и альтернативы глаголами.
+  // Текущий вариант (личное / разделить) не показываем.
+  el.innerHTML += `<div class="pick act">
+    <input list="issueList" placeholder="Найти задачу в Jira" spellcheck="false">
+    <div class="alts"><button class="pill sm ai" data-x="ai" title="Нейросеть на этом Маке сама найдёт подходящую задачу в Jira, без интернета">${SPARK}Подобрать задачу</button>${tk !== "~split" ? `<button class="txt sm" data-x="split" title="Время распределится между задачами дня пропорционально — для переписки, почты и мелочей">Разделить между задачами</button>` : ""}${tk !== "~skip" ? `<button class="txt sm" data-x="skip" title="Время не уйдёт в Jira">Отметить как личное</button>` : ""}</div></div>`;
+  const inp = $("input[list]", el);
+  // Выбор запоминается всегда: в следующие дни эта активность сама попадёт туда же.
+  const send = (issue, skip, split) => api("/api/assign", { issue, skip, split, remember: true, context_key: mb.key, label: mb.label, intervals: blocks.map(b => [b.start, b.end]) })
+    .then(setDay).catch(e => toast(e.message, true));
+  inp.onchange = () => { const v = resolveIssueInput(inp.value); if (v) send(v, false, false); };
+  inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); inp.onchange(); } if (e.key === "Escape") closeAct(el); };
+  $('[data-x="split"]', el)?.addEventListener("click", () => send(null, false, true));
+  $('[data-x="skip"]', el)?.addEventListener("click", () => send(null, true, false));
+  $('[data-x="ai"]', el).onclick = e => aiPick(e.currentTarget, mb, blocks);
+}
+function renderChrono(box) {
+  box.innerHTML = `<div class="chrono">${S.day.blocks.map(b => {
+    const sg = sugOf(b), what = b.issue ? `<b>${esc(b.issue)}</b> ${esc(summary(b.issue))}` : b.skip ? "личное" : b.split ? "по задачам дня" : sg ? `подсказка: ${esc(sg)}` : "без задачи";
+    return `<div class="row"><span class="tm">${clock(b.start)}–${clock(b.end)}</span><span class="dot" style="--p:${b.issue ? pastel(b.issue) : b.skip ? "var(--skip)" : "var(--wait)"}"></span>
+      ${icon(b.icon, b.label)}<span class="n">${what} <span style="color:var(--muted)">· ${esc(b.contexts.slice(0, 2).map(x => x.label).join(", "))}</span></span><span class="d">${hmm(b.seconds)}</span></div>`; }).join("")}</div>`;
+}
+
+function resolveIssueInput(raw) {
+  raw = raw.trim(); if (!raw) return null;
+  const v = raw.split(/\s/)[0].toUpperCase(); if (/^[A-Z][A-Z0-9_]+-\d+$/.test(v)) return v;
+  const q = raw.toLowerCase(), hits = S.issues.filter(i => (i.summary || "").toLowerCase().includes(q) || (i.project_name || "").toLowerCase().includes(q));
+  if (hits.length === 1) return hits[0].key;
+  toast(hits.length ? `Подходит несколько задач (${hits.length}): выберите из списка` : S.issues.length ? "Такой задачи нет. Обновите задачи из Jira (меню •••) или введите ключ, например ALP-12" : "Подключите Jira или введите ключ, например ALP-12", true);
+  return false;
+}
+async function assignGroup(g, issue, skip, split, remember) {
+  let d = null;  // у темы каждую активность запоминаем отдельно: завтра 5element.ru узнается и без Claude Code
+  for (const mb of g.members.values())
+    d = await api("/api/assign", { issue, skip, split, remember, context_key: mb.key, label: mb.label, intervals: mb.blocks.filter(b => !b.issue && !b.skip && !b.split).map(b => [b.start, b.end]) });
+  return d;
+}
+function accept(g, pr, remember) {
+  // Подсказка «по соседям» — про отрезок, а не про приложение: только её интервалы и без «запомнить».
+  return pr.blocks ? api("/api/assign", { issue: pr.issue, intervals: pr.blocks.map(b => [b.start, b.end]) }) : assignGroup(g, pr.issue, false, false, remember);
+}
+
+/* ---------- стопка ---------- */
+function renderStack() {
+  const day = S.day, p = day.proposal, wls = p.worklogs, pending = wls.filter(w => w.status === "draft" || w.status === "changed");
+  $("#stackTotal").textContent = hmm(wls.reduce((s, w) => s + w.seconds, 0));
+  $("#stackSub").textContent = wls.length ? `${wls.length} ${plural(wls.length, "задача", "задачи", "задач")}` : "Здесь соберутся ворклоги";
+  const ST = { pushed: ["в Jira", ""], in_jira: ["в Jira", ""], changed: ["изменено", "ch"] };
+  $("#wls").innerHTML = wls.length ? wls.map(w => { const st = ST[w.status];
+    return `<div class="wl" data-w="${esc(w.issue)}" data-drop="${esc(w.issue)}" style="--p:${pastel(w.issue)}">
+      <span class="k"><i></i><a href="${esc(day.base_url)}/browse/${esc(w.issue)}" target="_blank" rel="noopener">${esc(w.issue)}</a>${st ? `<span class="st ${st[1]}">${st[0]}</span>` : ""}</span>
+      <span class="tv">${hmm(w.seconds)}</span>
+      <button class="ed" title="Изменить время и комментарий" aria-label="Изменить ${esc(w.issue)}">${PEN}</button>
+      <span class="sum" title="${esc(w.summary || "")}">${esc(w.summary || summary(w.issue))}</span>
+      <div class="cmt ${w.comment ? "" : "none"}">${esc(w.comment || "без комментария")}</div>
+    </div>`; }).join("") : `<div class="sempty">${day.blocks.length ? "Примите подсказки слева, и задачи появятся здесь" : "Пока нечего отправлять"}</div>`;
+  $$("#wls .wl").forEach(el => $(".ed", el).onclick = () => editWorklog(el, wls.find(w => w.issue === el.dataset.w)));
+  const push = $("#push"), sec = pending.reduce((s, w) => s + w.seconds, 0);
+  if (!day.jira_configured) { $("#pushLabel").textContent = "Подключить Jira"; push.disabled = false; push.dataset.mode = "connect"; }
+  else { push.dataset.mode = "push"; push.disabled = !pending.length;
+    $("#pushLabel").textContent = pending.length ? `Залогировать · ${hmm(sec)}` : wls.length ? "Всё уже в Jira" : "Залогировать"; }
+  $("#stackNote").innerHTML = p.unassigned >= 60 ? `<b>${dur(p.unassigned)}</b> ждут решения и не уйдут` : "";
+  const fd = (p.folded || []);
+  $("#stackNote").innerHTML = fd.length ? `+ ${fd.map(f => `${esc(f.issue)} ${hmm(f.seconds)}`).join(", ")} — меньше ${Math.round(p.min_sec / 60)} мин, добавлено к задачам выше` : "";
+  $("#manualLabel").textContent = day.status === "manual" ? "Снять отметку «внесён»" : "Отметить день как внесённый";
+  $("#manualSub").textContent = day.status === "manual" ? "Трекер снова будет напоминать о дне" : "Трекер перестанет о нём напоминать";
+}
+
+function editWorklog(el, w) {
+  $$("#wls .wl.editing").forEach(x => x !== el && renderStack());
+  if (el.classList.contains("editing")) return renderStack();
+  el.classList.add("editing");
+  el.querySelector(".cmt").remove();
+  // Правка на месте: большая цифра сама становится полем времени, карандаш — крестиком «закрыть».
+  $(".tv", el).outerHTML = `<input class="tv tvin" value="${hmm(w.seconds)}" aria-label="Время" title="Факт ${dur(w.raw_seconds)}" spellcheck="false">`;
+  $(".ed", el).innerHTML = CHEV; $(".ed", el).title = "Свернуть без изменений (Esc)";
+  // Главное в правке — комментарий (его читают в Jira), поэтому он на всю ширину; время — короткое поле рядом с «Готово».
+  el.insertAdjacentHTML("beforeend", `<div class="form"><textarea rows="3" placeholder="Что сделано по задаче — увидят в Jira" aria-label="Комментарий">${esc(w.comment)}</textarea></div>
+    <div class="acts"><button class="done">Готово</button>${w.edited ? `<button class="auto">вернуть авто ${hmm(w.auto_seconds)}</button>` : ""}
+      ${w.jira_id ? `<span class="drop off" title="Уже отправлено — удалить запись можно только в самой Jira">уже в Jira</span>`
+        : `<button class="drop" title="Задача не уйдёт в Jira: её активности вернутся в «Ждут решения», запомненные правила для них сбросятся">Убрать</button>`}</div>`);
+  const t = $(".tvin", el), c = $(".form textarea", el);
+  const fit = () => { c.style.height = "auto"; c.style.height = c.scrollHeight + 2 + "px"; }; fit(); c.oninput = fit; c.focus();
+  t.onkeydown = e => { if (e.key === "Enter") $(".done", el).click(); if (e.key === "Escape") renderStack(); };
+  c.onkeydown = e => { if (e.key === "Escape") renderStack(); };
+  $(".done", el).onclick = async () => {
+    try { let d = null;
+      if (t.value.trim() !== hmm(w.seconds)) d = await api("/api/draft", { issue: w.issue, time: t.value });
+      if (c.value !== (w.comment || "")) d = await api("/api/draft", { issue: w.issue, comment: c.value });
+      d ? setDay(d) : renderStack(); } catch (e) { toast(e.message, true); } };
+  $(".auto", el)?.addEventListener("click", () => api("/api/draft", { issue: w.issue, reset: true }).then(setDay));
+  // Задача попала сюда по ошибке: снимаем привязку со всех её активностей — они уходят в «Ждут решения», запись пропадает из стопки.
+  $("button.drop", el)?.addEventListener("click", e => busy(e.currentTarget, async () => {
+    let d = null;
+    for (const g of S.groups || []) for (const mb of g.members.values()) {
+      const bl = mb.blocks.filter(b => b.issue === w.issue);
+      if (bl.length) d = await api("/api/assign", { issue: null, remember: true, context_key: mb.key, label: mb.label, intervals: bl.map(b => [b.start, b.end]) });
+    }
+    if (w.edited) d = await api("/api/draft", { issue: w.issue, reset: true });
+    if (d) setDay(d);
+    toast(S.day.proposal.worklogs.some(x => x.issue === w.issue) ? `${w.issue} осталась: часть времени пришла из «поделить между задачами»` : `${w.issue} убрана, активности ждут решения`);
+  }, "Убираю…"));
+}
+
+/* ---------- перетаскивание: активность → задача ---------- */
+let DRAG = null;
+document.addEventListener("dragstart", e => {
+  const ta = e.target.closest?.(".ta"), wc = e.target.closest?.(".wcard");
+  if (ta) DRAG = { member: ta.dataset.ta, from: ta.dataset.t };
+  else if (wc) DRAG = { group: wc.dataset.k };
+  else return;
+  e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", "tt");
+  document.body.classList.add("dragging");
+});
+document.addEventListener("dragend", () => { DRAG = null; document.body.classList.remove("dragging"); $$(".drop-on").forEach(x => x.classList.remove("drop-on")); });
+document.addEventListener("dragover", e => { const t = DRAG && e.target.closest?.("[data-drop]"); if (!t) return;
+  e.preventDefault(); $$(".drop-on").forEach(x => x !== t && x.classList.remove("drop-on")); t.classList.add("drop-on"); });
+document.addEventListener("dragleave", e => { const t = e.target.closest?.("[data-drop]"); if (t && !t.contains(e.relatedTarget)) t.classList.remove("drop-on"); });
+document.addEventListener("drop", async e => {
+  const t = DRAG && e.target.closest?.("[data-drop]"); if (!t) return; e.preventDefault();
+  const to = t.dataset.drop, issue = to[0] === "~" ? null : to, skip = to === "~skip", split = to === "~split", d0 = DRAG; DRAG = null;
+  try {
+    if (d0.group) { const g = groupOf(d0.group); setDay(await assignGroup(g, issue, skip, split, true)); }
+    else { const g = (S.groups || []).find(g => g.members.has(d0.member)), mb = g.members.get(d0.member);
+      if (d0.from === to) return;
+      const blocks = mb.blocks.filter(b => (b.issue || (b.skip ? "~skip" : b.split ? "~split" : "")) === d0.from);
+      setDay(await api("/api/assign", { issue, skip, split, remember: true, context_key: mb.key, label: mb.label, intervals: blocks.map(b => [b.start, b.end]) })); }
+    toast(issue ? `Записано в ${issue}` : skip ? "Отмечено как личное" : "Поделится между задачами");
+  } catch (err) { toast(err.message, true); }
+});
+
+/* ---------- кнопки ---------- */
+$("#push").onclick = async e => { const btn = e.currentTarget;
+  if (btn.dataset.mode === "connect") return openConnect();
+  const p = S.day.proposal, todo = p.worklogs.filter(w => w.status === "draft" || w.status === "changed");
+  if (!await ask(`<h2>Залогировать в Jira?</h2><div class="sendlist">${todo.map(w => `<span class="k" style="--p:${pastel(w.issue)}">${esc(w.issue)}</span><span class="c">${esc(w.comment)}</span><b class="num">${hmm(w.seconds)}</b>`).join("")}</div>
+    ${p.unassigned >= 60 ? `<p>${dur(p.unassigned)} ждут решения и не залогируются.</p>` : ""}`, "Залогировать")) return;
+  busy(btn, async () => { const r = await api("/api/push", {}); setDay(r.day);
+    const errs = r.results.filter(x => x.action === "error"), ok = r.results.filter(x => x.action === "create" || x.action === "update");
+    if (errs.length) toast(errs.map(x => `${x.issue}: ${x.error}`).join("\n"), true); else toast(`Залогировано в Jira: ${ok.length} ${plural(ok.length, "задача", "задачи", "задач")}`); }); };
+const copyTempo = async () => { const txt = S.day.proposal.worklogs.map(w => `${w.issue}\t${hmm(w.seconds)}\t${w.comment}`).join("\n");
+  try { await navigator.clipboard.writeText(txt); toast("Скопировано: задача ⇥ часы ⇥ комментарий"); } catch (e) { ask(`<pre style="white-space:pre-wrap">${esc(txt)}</pre>`, "Закрыть", ""); } };
+$("#copy").onclick = copyTempo;
+$("#manual").onclick = e => busy(e.currentTarget, async () => setDay(await api("/api/mark", { status: S.day.status === "manual" ? null : "manual" })));
+const exportDay = () => busy(null, async () => { const { text } = await api("/api/report?date=" + S.date);
+  try { await navigator.clipboard.writeText(text); toast("День скопирован: вставьте в Claude, чат или заметки"); }
+  catch (err) { await ask(`<h2>Выгрузка дня</h2><pre style="white-space:pre-wrap;max-height:50vh;overflow:auto;font-size:12px">${esc(text)}</pre>`, "Закрыть", ""); } });
+$("#more").onclick = e => { e.stopPropagation(); $("#moreMenu").classList.toggle("open"); };
+document.addEventListener("click", () => { $("#moreMenu").classList.remove("open"); $$(".wm.open").forEach(x => x.classList.remove("open")); });
+$("#moreMenu").onclick = async e => { const m = e.target.closest("[data-m]")?.dataset.m; if (!m) return; $("#moreMenu").classList.remove("open");
+  try { if (m === "copy") await copyTempo();
+    if (m === "export") exportDay();
+    if (m === "refresh") { setDay(await api("/api/refresh_logged", {})); toast("Сверено с Jira"); }
+    if (m === "sync") { const r = await api("/api/issues/sync", {}); await loadIssues(); toast(`Загружено задач: ${r.synced}`); }
+    if (m === "manual") setDay(await api("/api/mark", { status: S.day.status === "manual" ? null : "manual" }));
+    if (m === "connect") openConnect();
+    if (m === "settings") openSettings();
+  } catch (err) { toast(err.message, true); } };
+$("#prev").onclick = () => { S.sel = null; load(addDays(S.date, -1)); };
+$("#next").onclick = () => { if (!$("#next").disabled) { S.sel = null; load(addDays(S.date, 1)); } };
+$("#today").onclick = () => { S.sel = null; load(iso(new Date())); };
+document.addEventListener("keydown", e => { if (e.target.closest("input,textarea") || $("#dlg").open || $("#connect").open) return;
+  if (e.key === "ArrowLeft") $("#prev").click(); if (e.key === "ArrowRight") $("#next").click(); });
+
+function openConnect() {
+  const d = $("#connect"), day = S.day || {};
+  $("#cBase").value = day.base_url || ""; $("#cUser").value = day.jira_user || ""; $("#cToken").value = ""; $("#cErr").textContent = "";
+  // Ссылка на страницу токенов — только когда адрес Jira уже вписан.
+  const link = () => { const b = $("#cBase").value.trim().replace(/\/$/, "");
+    if (/^https?:\/\/./.test(b)) $("#cLink").href = b + "/secure/ViewProfile.jspa?selectedTab=com.atlassian.pats.pats-plugin:jira-user-personal-access-tokens"; else $("#cLink").removeAttribute("href"); };
+  link(); $("#cBase").oninput = link; d.showModal(); (!$("#cBase").value ? $("#cBase") : !$("#cUser").value ? $("#cUser") : $("#cToken")).focus();
+}
+$("#bannerConnect").onclick = openConnect;
+// Меню аккаунта в шапке окна.
+$("#acct").onclick = e => { e.stopPropagation();
+  if (!S.day?.jira_configured) return openConnect();
+  const m = $("#acctMenu"); m.classList.toggle("open"); $("#acct").classList.toggle("on", m.classList.contains("open")); };
+$("#acctMenu").onclick = async e => { const a = e.target.closest("[data-a]")?.dataset.a; if (!a) return;
+  $("#acctMenu").classList.remove("open"); $("#acct").classList.remove("on");
+  if (a === "settings") openSettings();
+  if (a === "logout" && await ask(`<h2>Выйти из Jira?</h2><p>Трекер продолжит записывать время, история и разобранные задачи останутся. Отправлять часы в Jira можно будет снова после входа.</p>`, "Выйти")) {
+    await api("/api/jira/logout", {}); toast("Вы вышли из Jira"); load(); } };
+document.addEventListener("click", () => { $("#acctMenu").classList.remove("open"); $("#acct").classList.remove("on"); });
+
+/* ---------- настройки: Jira, напоминание, доступы, нейросеть, версия ---------- */
+// Без приложения (страница в браузере) кнопка «Выдать» открывает нужный раздел Системных настроек напрямую.
+const PANE = Object.fromEntries([["accessibility", "Privacy_Accessibility"], ["calendar", "Privacy_Calendars"], ["automation", "Privacy_Automation"]]
+  .map(([k, v]) => [k, "x-apple.systempreferences:com.apple.preference.security?" + v]));
+const DAYS = [["mon", "пн"], ["tue", "вт"], ["wed", "ср"], ["thu", "чт"], ["fri", "пт"], ["sat", "сб"], ["sun", "вс"]];
+async function openSettings(focus) {
+  const d = $("#settings"); $("#setBody").innerHTML = `<p>Загружаю…</p>`; if (!d.open) d.showModal();
+  let st; try { await recheckPerms(); st = await api("/api/settings"); } catch (e) { $("#setBody").innerHTML = `<p>${esc(e.message)}</p>`; return; }
+  const j = st.jira, rm = st.reminder, pm = st.permissions, v = st.version || {}, nat = !!window.webkit?.messageHandlers?.tt;
+  const host = (j.base_url || "").replace(/^https?:\/\//, "");
+  $("#setBody").innerHTML = `
+    <section><h3>Jira</h3>
+      ${j.configured ? `<div class="srow"><span>${esc(j.username)} · ${esc(host)}</span><span class="ok">подключена</span></div>
+        <div class="srow"><span>Задач загружено: ${j.issues}</span><button class="txt sm" id="sSync">Обновить</button></div>
+        <div class="sbtns"><button class="txt sm" id="sToken">Сменить токен</button><button class="txt sm danger" id="sLogout">Выйти из Jira</button></div>`
+      : `<div class="srow"><span>Не подключена</span><button class="pill sm blue" id="sToken">Подключить</button></div>`}</section>
+    <section><h3>Напоминание</h3>
+      <label class="srow sw"><span>Напоминать о неотправленных часах<small id="rWhen">${parseInt(rm.time) >= 15 ? "Вечером — если сегодняшний день не ушёл в Jira" : "Утром — если вчерашний рабочий день не ушёл в Jira"}</small></span><input type="checkbox" id="rOn" ${rm.enabled ? "checked" : ""}></label>
+      <div id="rMore" ${rm.enabled ? "" : "hidden"}>
+        <div class="srow"><span>Во сколько</span><input id="rTime" class="tinp" value="${esc(rm.time)}" spellcheck="false"></div>
+        <div class="srow"><span>По каким дням</span><span class="dchips">${DAYS.map(([k, l]) => `<button class="dch ${rm.days.includes(k) ? "on" : ""}" data-d="${k}">${l}</button>`).join("")}</span></div>
+        <div class="srow"><span>Как напоминать<small>${rm.style === "notification" ? "Уведомление в углу экрана, не отвлекает" : "Окно с кнопкой «Разобрать» — сложно пропустить"}</small></span><span class="seg"><button data-st="dialog" class="${rm.style !== "notification" ? "on" : ""}">Окно</button><button data-st="notification" class="${rm.style === "notification" ? "on" : ""}">Уведомление</button></span></div>
+      </div></section>
+    <section><h3>Доступы</h3><div id="sPerm">${permRows(pm)}</div></section>
+    <section id="sAIs"><h3>Подбор задач нейросетью</h3><div id="sAI">${aiRows(st.local)}</div></section>
+    <section><h3>Хранилище</h3><div id="sStore">${storeRows(st.storage)}</div></section>
+    <section><h3>О приложении</h3>
+      <div class="srow" title="Сборка от ${esc(v.app_date || "—")}, интерфейс от ${esc(v.web || "—")}"><span>Версия</span><span class="mut">${esc(v.app || "—")}${v.build ? ` (${esc(v.build)})` : ""}</span></div>
+      <div id="upd"><div class="sbtns"><button class="txt sm" id="updBtn">Проверить обновления</button></div></div></section>`;
+  const B = $("#setBody");
+  const saveRem = () => api("/api/settings", { reminder_enabled: $("#rOn", B).checked, reminder_time: $("#rTime", B).value.trim(),
+    reminder_days: $$(".dch.on", B).map(x => x.dataset.d), reminder_style: $(".seg .on", B).dataset.st }).catch(e => toast(e.message, true));
+  $("#rOn", B).onchange = () => { $("#rMore", B).hidden = !$("#rOn", B).checked; saveRem(); };
+  $("#rTime", B).onchange = () => { $("#rWhen", B).textContent = parseInt($("#rTime", B).value) >= 15 ? "Вечером — если сегодняшний день не ушёл в Jira" : "Утром — если вчерашний рабочий день не ушёл в Jira"; saveRem(); };
+  $$(".dch", B).forEach(b => b.onclick = () => { b.classList.toggle("on"); saveRem(); });
+  $$(".seg button", B).forEach(b => b.onclick = () => { $$(".seg button", B).forEach(x => x.classList.toggle("on", x === b));
+    b.closest(".srow").querySelector("small").textContent = b.dataset.st === "notification" ? "Уведомление в углу экрана, не отвлекает" : "Окно с кнопкой «Разобрать» — сложно пропустить"; saveRem(); });
+  bindPermRows(); bindAI(); bindStore(); bindUpdate();
+  if (focus === "ai") { const sec = $("#sAIs"); sec.scrollIntoView({ block: "center" }); sec.classList.add("hl"); setTimeout(() => sec.classList.remove("hl"), 1600); }
+  $("#sToken", B).onclick = () => { d.close(); openConnect(); };
+  $("#sSync", B)?.addEventListener("click", e => busy(e.currentTarget, async () => { const r = await api("/api/issues/sync", {}); await loadIssues(); toast(`Загружено задач: ${r.synced}`); openSettings(); }, "Обновляю…"));
+  $("#sLogout", B)?.addEventListener("click", async () => { if (!await ask(`<h2>Выйти из Jira?</h2><p>Трекер продолжит записывать время, история и разобранные задачи останутся. Отправлять часы в Jira можно будет снова после входа.</p>`, "Выйти")) return;
+    await api("/api/jira/logout", {}); toast("Вы вышли из Jira"); load(); openSettings(); });
+}
+$("#setClose").onclick = () => $("#settings").close();
+// Клик мимо окна настроек (по затемнённому фону) — закрыть.
+$("#settings").addEventListener("click", e => { if (e.target === e.currentTarget) e.currentTarget.close(); });
+
+// Обновления: только по кнопке — спрашиваем у GitHub последний релиз и, если он новее, даём ссылку на dmg.
+function bindUpdate() {
+  $("#updBtn")?.addEventListener("click", e => busy(e.currentTarget, async () => {
+    const u = await api("/api/update/check"), box = $("#upd");
+    if (u.error) box.innerHTML = `<p class="snote err">Не удалось проверить: ${esc(u.error)}</p><div class="sbtns"><button class="txt sm" id="updBtn">Проверить ещё раз</button></div>`;
+    else if (u.newer) box.innerHTML = `<div class="srow"><span>Доступна версия ${esc(u.latest)}<small>Скачайте, откройте и замените «65 tracker» в «Программах». Данные и настройки сохранятся</small></span>
+        <a class="pill sm blue" href="${esc(u.url)}" target="_blank" rel="noopener">Скачать</a></div>${u.notes ? `<p class="snote" style="white-space:pre-line">${esc(u.notes)}</p>` : ""}`;
+    else box.innerHTML = `<p class="snote">Установлена последняя версия${u.latest ? ` (${esc(u.latest)})` : ""}</p><div class="sbtns"><button class="txt sm" id="updBtn">Проверить ещё раз</button></div>`;
+    bindUpdate();
+  }, "Проверяю…"));
+}
+// Хранилище: история записи и кеш. Кеш (векторы нейросети, иконки, журналы) собирается заново сам.
+const mb = b => b < 1048576 ? `${Math.max(1, Math.round(b / 1024))} КБ` : `${(b / 1048576).toFixed(b < 10485760 ? 1 : 0).replace(".", ",")} МБ`;
+function storeRows(sg) {
+  if (!sg) return "";
+  return `<div class="srow"><span>История записи${sg.since ? ` с ${esc(sg.since)}` : ""}</span><span class="mut">${mb(sg.history)}</span></div>
+    <div class="srow"><span>Временные файлы<small>Иконки приложений и данные для подбора задач. История и задачи при очистке не пропадут</small></span><span class="mut">${mb(sg.cache)}</span></div>
+    <div class="sbtns"><button class="txt sm" id="cacheClr">Очистить временные файлы</button></div>`;
+}
+function bindStore() {
+  $("#cacheClr")?.addEventListener("click", e => busy(e.currentTarget, async () => {
+    const sg = await api("/api/cache/clear", {}); $("#sStore").innerHTML = storeRows(sg); bindStore(); toast("Временные файлы удалены");
+  }, "Очищаю…"));
+}
+
+// Нейросеть не входит в приложение: скачать по кнопке (в фоне, с процентами) и удалить, если не нужна.
+function aiRows(l) {
+  const j = l.job;
+  if (j && (j.stage === "binary" || j.stage === "model")) return `<div class="srow"><span>${j.stage === "binary" ? "Скачиваю Ollama" : `Скачиваю модель ${esc(l.model_name)}`}… ${j.pct || 0}%</span></div>
+    <div class="aibar"><i style="width:${j.pct || 0}%"></i></div><p class="snote">Можно закрыть настройки — скачивание продолжится в фоне</p>`;
+  if (l.ready) return `<div class="srow"><span>Подбирает задачу к активности на этом Маке, без интернета</span><span class="ok">установлена</span></div>
+    <div class="sbtns"><button class="txt sm danger" id="aiDel">Удалить (освободит около 1,2 ГБ)</button></div>`;
+  return `<div class="srow"><span>Подбирает задачу к активности на этом Маке, без интернета. Без неё трекер тоже работает</span></div>
+    ${j && j.stage === "error" ? `<p class="snote err">Не удалось: ${esc(j.error || "")}</p>` : ""}
+    <div class="sbtns"><button class="pill sm blue" id="aiGet">${j && j.stage === "error" ? "Повторить" : "Скачать — около 1,2 ГБ"}</button></div>`;
+}
+let aiPoll = null;
+function bindAI() {
+  $("#aiGet")?.addEventListener("click", async () => { renderAI(await api("/api/local/install", {})); });
+  $("#aiDel")?.addEventListener("click", async e => {
+    if (!await ask(`<h2>Удалить нейросеть?</h2><p>Подбор задач перестанет работать. Скачать её можно будет снова в настройках.</p>`, "Удалить")) return;
+    await busy(e.currentTarget, async () => renderAI(await api("/api/local/remove", {})), "Удаляю…"); });
+}
+function renderAI(l) {
+  if (!$("#sAI")) return; $("#sAI").innerHTML = aiRows(l); bindAI();
+  const run = l.job && (l.job.stage === "binary" || l.job.stage === "model");
+  clearTimeout(aiPoll);
+  if (run) aiPoll = setTimeout(async () => { if ($("#settings").open) renderAI(await api("/api/local/status")); }, 1000);
+  else if (l.ready) refreshAiButtons();
+}
+// Кнопки «✦ Подобрать»: без нейросети открывают настройки на разделе со скачиванием.
+async function aiReady() {
+  let l = null; try { l = await api("/api/local/status"); } catch (e) {}
+  if (l && l.ready) return true;
+  toast("Для подбора нужна нейросеть — скачайте её в настройках"); openSettings("ai"); return false;
+}
+function refreshAiButtons() {}
+
+// Доступы в настройках: приложение перепроверяет их сразу при открытии, а пока что-то не выдано — каждые 2 с.
+async function recheckPerms() {
+  if (window.webkit?.messageHandlers?.tt) { native({ action: "refresh" }); await new Promise(r => setTimeout(r, 300)); }
+}
+function permRows(pm) {
+  if (!pm) return `<p>Приложение в строке меню не запущено</p>`;
+  const nat = !!window.webkit?.messageHandlers?.tt;
+  const row = (name, ok, action, bundle) => `<div class="srow"><span>${esc(name)}</span>
+    ${ok ? `<span class="ok">выдан</span>` : nat ? `<button class="txt sm" data-perm-a="${action}" data-perm-b="${esc(bundle || "")}">Выдать</button>`
+      : `<a class="txt sm" href="${PANE[action]}">Выдать</a>`}</div>`;
+  return row("Какое окно открыто", pm.accessibility, "accessibility") + row("Встречи из Календаря macOS", pm.calendar === "ok", "calendar")
+    + (pm.browsers || []).map(b => row(`Адреса вкладок в ${b.name}`, b.state === "ok", "automation", b.bundle)).join("");
+}
+function bindPermRows() {
+  $$("#sPerm [data-perm-a]").forEach(b => b.onclick = () => native({ action: b.dataset.permA, bundle: b.dataset.permB || undefined }));
+}
+setInterval(async () => {
+  if (!$("#settings").open || !$("#sPerm [data-perm-a], #sPerm a")) return;
+  await recheckPerms();
+  try { $("#sPerm").innerHTML = permRows((await api("/api/settings")).permissions); bindPermRows(); } catch (e) {}
+}, 2000);
+// Настройки открыли из меню приложения или панели 65.
+window.ttSettings = openSettings;
+if (location.hash === "#settings") setTimeout(openSettings, 300);
+$("#cCancel").onclick = () => $("#connect").close();
+$("#cOk").onclick = e => busy(e.currentTarget, async () => { $("#cErr").textContent = "";
+  // Проверка токена — секунда, а загрузка всех задач из Jira может занять до минуты: говорим, что происходит.
+  const btn = e.currentTarget, note = $("#cNote");
+  const t1 = setTimeout(() => { btn.textContent = "Загружаю задачи…"; note.textContent = "Токен подошёл. Загружаю ваши задачи из Jira — это может занять до минуты"; }, 2500);
+  try { const r = await api("/api/jira/connect", { base_url: $("#cBase").value.trim(), username: $("#cUser").value.trim(), token: $("#cToken").value.trim() });
+    $("#connect").close(); toast(`Jira подключена: ${r.name}. Задач: ${r.issues}`); await loadIssues(); load(); }
+  catch (err) { $("#cErr").textContent = err.message; }
+  finally { clearTimeout(t1); note.textContent = ""; } }, "Проверяю токен…");
+
+async function loadIssues() { try { S.issues = await api("/api/issues");
+  $("#issueList").innerHTML = S.issues.filter(i => i.mine !== 0).map(i => `<option value="${esc(i.key)}" label="${esc(i.summary || "")}${i.project_name ? " · " + esc(i.project_name) : ""}"></option>`).join(""); } catch (e) {} }
+setInterval(() => { if (!document.hidden) api("/api/ping").catch(() => {}); }, 60000);
+addEventListener("resize", () => S.day && renderRibbon());
+loadIssues().then(() => S.day && render());
+load().catch(e => toast(e.message, true));
+</script>
+</body>
+</html>

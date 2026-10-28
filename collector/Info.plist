@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleIdentifier</key><string>com.timetracker.collector</string>
+  <key>CFBundleName</key><string>65 tracker</string>
+  <key>CFBundleDisplayName</key><string>65 tracker</string>
+  <key>CFBundleExecutable</key><string>ttcollect</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>1.2</string>
+  <key>CFBundleVersion</key><string>3</string>
+  <key>LSUIElement</key><true/>
+  <key>LSMinimumSystemVersion</key><string>14.0</string>
+  <key>NSAppleEventsUsageDescription</key><string>Чтобы знать URL активной вкладки браузера (Jira-задача, Figma-файл) для учёта времени.</string>
+  <key>NSCalendarsFullAccessUsageDescription</key><string>Чтобы подписывать встречи в таймлайне названиями из календаря.</string>
+  <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
+  <key>NSCalendarsUsageDescription</key><string>Чтобы подписывать встречи в таймлайне названиями из календаря.</string>
+</dict>
+</plist>

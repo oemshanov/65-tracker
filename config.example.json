@@ -1,0 +1,28 @@
+{
+  "jira": {
+    "base_url": "",
+    "username": "",
+    "auth": "pat",
+    "mode": "jira"
+  },
+  "reminders": [
+    {
+      "days": [
+        "mon",
+        "tue",
+        "wed",
+        "thu",
+        "fri"
+      ],
+      "time": "10:00",
+      "review": "previous_workday"
+    }
+  ],
+  "reminder_style": "dialog",
+  "rules": [],
+  "collector": {
+    "redact_title_patterns": [
+      "(?i)сбербанк онлайн|тинькофф|госуслуги"
+    ]
+  }
+}

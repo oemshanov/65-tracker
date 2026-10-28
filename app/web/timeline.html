@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Учёт времени</title>
+<style>
+:root {
+  --bg: #f6f6f3; --surface: #ffffff; --surface-2: #f0efeb; --line: #e3e1db; --text: #1d1c1a;
+  --muted: #6d6a63; --faint: #a19d94; --accent: #2f5bd3; --accent-ink: #fff; --warn: #b4540a;
+  --ok: #217a4b; --danger: #b42318; --unassigned: #c9c5bb; --personal: #e7e4dc; --shadow: 0 1px 2px rgba(0,0,0,.06);
+  --hue-l: 62%; --hue-c: 0.13;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151514; --surface: #1d1d1b; --surface-2: #262624; --line: #33322f; --text: #ecebe6;
+    --muted: #a3a097; --faint: #6f6c65; --accent: #7d9bff; --accent-ink: #0d1530; --warn: #f0a050;
+    --ok: #5cc98a; --danger: #ff7b6e; --unassigned: #4a4844; --personal: #2f2e2b; --shadow: none;
+    --hue-l: 70%; --hue-c: 0.12; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151514; --surface: #1d1d1b; --surface-2: #262624; --line: #33322f; --text: #ecebe6;
+  --muted: #a3a097; --faint: #6f6c65; --accent: #7d9bff; --accent-ink: #0d1530; --warn: #f0a050;
+  --ok: #5cc98a; --danger: #ff7b6e; --unassigned: #4a4844; --personal: #2f2e2b; --shadow: none;
+  --hue-l: 70%; --hue-c: 0.12; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 60px; }
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+h1 { font-size: 18px; font-weight: 650; margin: 0 8px 0 0; letter-spacing: -.01em; }
+.datenav { display: flex; align-items: center; gap: 4px; }
+.datenav .d { font-weight: 600; min-width: 150px; text-align: center; }
+button, .btn { font: inherit; border: 1px solid var(--line); background: var(--surface); color: var(--text);
+  border-radius: 8px; padding: 6px 11px; cursor: pointer; box-shadow: var(--shadow); white-space: nowrap; }
+button:hover { border-color: var(--faint); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+button.ghost { background: transparent; box-shadow: none; border-color: transparent; color: var(--muted); }
+button.ghost:hover { color: var(--text); background: var(--surface-2); }
+button:disabled { opacity: .45; cursor: default; }
+.spacer { flex: 1; }
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 16px; }
+.wd { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 7px 9px; cursor: pointer;
+  text-align: left; box-shadow: var(--shadow); min-width: 0; }
+.wd.sel { border-color: var(--accent); outline: 1px solid var(--accent); }
+.wd .n { font-size: 12px; color: var(--muted); }
+.wd .h { font-weight: 600; font-variant-numeric: tabular-nums; }
+.wd .s { font-size: 11px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wd.future { opacity: .4; cursor: default; }
+.s.need { color: var(--warn); } .s.ok { color: var(--ok); } .s.none { color: var(--faint); }
+.stats { display: flex; gap: 22px; flex-wrap: wrap; margin: 4px 0 12px; }
+.stat .v { font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.stat .l { font-size: 12px; color: var(--muted); }
+.stat.warn .v { color: var(--warn); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+.tl { padding: 14px 14px 8px; margin-bottom: 16px; }
+.tl-track { position: relative; height: 46px; background: var(--surface-2); border-radius: 8px; overflow: hidden; }
+.tl-ev { position: relative; height: 16px; margin-bottom: 4px; }
+.tl-ev div { position: absolute; top: 0; height: 14px; border-radius: 4px; background: transparent;
+  border: 1px dashed var(--faint); font-size: 10px; color: var(--muted); padding: 0 4px; overflow: hidden;
+  white-space: nowrap; text-overflow: ellipsis; line-height: 12px; }
+.tl-b { position: absolute; top: 4px; bottom: 4px; border-radius: 5px; cursor: pointer; overflow: hidden;
+  font-size: 11px; font-weight: 600; color: rgba(0,0,0,.72); padding: 3px 5px; line-height: 1.2; white-space: nowrap;
+  text-overflow: ellipsis; transition: transform .08s; }
+.tl-b:hover { transform: translateY(-1px); }
+.tl-b.un { background: repeating-linear-gradient(135deg, var(--unassigned) 0 6px, transparent 6px 10px);
+  border: 1px solid var(--unassigned); color: var(--muted); }
+.tl-b.skip { background: var(--personal); color: var(--faint); }
+.tl-b.sel { outline: 2px solid var(--text); outline-offset: 1px; }
+.tl-axis { position: relative; height: 18px; margin-top: 4px; font-size: 11px; color: var(--faint);
+  font-variant-numeric: tabular-nums; }
+.tl-axis span { position: absolute; transform: translateX(-50%); }
+.grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .week { grid-template-columns: repeat(4, 1fr); } }
+.sec-h { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.sec-h h2 { font-size: 14px; margin: 0; font-weight: 650; }
+.sec-h .hint { color: var(--muted); font-size: 12px; }
+.blk { display: grid; grid-template-columns: 6px 92px minmax(0,1fr); gap: 10px; padding: 10px 14px 10px 10px;
+  border-bottom: 1px solid var(--line); }
+.blk:last-child { border-bottom: 0; }
+.blk.sel { background: var(--surface-2); }
+.blk .bar { border-radius: 3px; }
+.blk .tm { font-variant-numeric: tabular-nums; font-size: 13px; }
+.blk .tm .dur { font-weight: 650; display: block; }
+.blk .tm .rng { color: var(--muted); font-size: 12px; }
+.blk .lbl { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.blk .also { font-size: 12px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.blk .sub { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.blk .ctl { display: flex; gap: 6px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+.issue-in { font: inherit; border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 7px;
+  padding: 4px 8px; width: 210px; }
+.issue-in:focus { outline: 2px solid var(--accent); border-color: transparent; }
+.chip { font-size: 12px; border-radius: 999px; padding: 2px 9px; border: 1px solid var(--line); color: var(--muted);
+  background: var(--surface); white-space: nowrap; }
+.chip.sug { border-color: var(--accent); color: var(--accent); cursor: pointer; }
+.chip.src { border: 0; padding: 2px 0; }
+label.rem { font-size: 12px; color: var(--muted); display: inline-flex; gap: 4px; align-items: center; }
+.wl { padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.wl:last-child { border-bottom: 0; }
+.wl-top { display: flex; align-items: center; gap: 8px; }
+.wl-key { font-weight: 650; }
+.wl-key a { color: inherit; }
+.wl-sum { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.wl-time { font: inherit; font-weight: 650; width: 72px; text-align: right; border: 1px solid var(--line);
+  background: var(--bg); color: var(--text); border-radius: 7px; padding: 3px 7px; font-variant-numeric: tabular-nums; }
+.wl-cmt { font: inherit; font-size: 13px; width: 100%; margin-top: 6px; border: 1px solid var(--line); background: var(--bg);
+  color: var(--text); border-radius: 7px; padding: 5px 8px; resize: none; overflow: hidden; min-height: 32px; line-height: 1.4; }
+.st { font-size: 11px; border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+.st.draft { background: var(--surface-2); color: var(--muted); }
+.st.pushed, .st.in_jira { background: color-mix(in oklab, var(--ok) 16%, transparent); color: var(--ok); }
+.st.changed { background: color-mix(in oklab, var(--warn) 16%, transparent); color: var(--warn); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; padding: 12px 14px; border-top: 1px solid var(--line); }
+.empty { padding: 26px 14px; color: var(--muted); text-align: center; }
+.foot { color: var(--muted); font-size: 12px; padding: 10px 14px; }
+.tabs { display: inline-flex; background: var(--surface-2); border-radius: 8px; padding: 2px; gap: 2px; }
+.tabs button { border: 0; box-shadow: none; background: transparent; padding: 4px 10px; font-size: 13px; color: var(--muted); }
+.tabs button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow); font-weight: 600; }
+.grp-h { padding: 8px 14px; font-size: 12px; color: var(--muted); background: var(--surface-2); border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 8px; }
+.chip.hint { border-color: var(--accent); color: var(--accent); cursor: pointer; max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--text); color: var(--bg);
+  padding: 9px 14px; border-radius: 9px; font-size: 13px; max-width: min(640px, 92vw); z-index: 10; display: none;
+  white-space: pre-line; }
+.toast.err { background: var(--danger); color: #fff; }
+.tip { position: fixed; pointer-events: none; background: var(--text); color: var(--bg); font-size: 12px; padding: 6px 9px;
+  border-radius: 7px; max-width: 360px; z-index: 9; display: none; white-space: pre-line; }
+dialog { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); padding: 18px;
+  max-width: 520px; width: calc(100vw - 32px); }
+dialog::backdrop { background: rgba(0,0,0,.35); }
+dialog pre { white-space: pre-wrap; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--surface-2);
+  padding: 10px; border-radius: 8px; max-height: 50vh; overflow: auto; }
+.offline { background: var(--warn); color: #fff; padding: 8px 14px; border-radius: 9px; margin-bottom: 12px; display: none; }
+.guide { padding: 14px 16px; margin-bottom: 16px; }
+.guide-h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.guide-h b { font-size: 14px; }
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 900px) { .steps { grid-template-columns: 1fr; } }
+.step { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; align-items: start; }
+.step .num { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px;
+  font-weight: 700; background: var(--surface-2); color: var(--muted); }
+.step.done .num { background: color-mix(in oklab, var(--ok) 18%, transparent); color: var(--ok); }
+.step.now .num { background: var(--accent); color: var(--accent-ink); }
+.step .t { font-weight: 600; }
+.step .d { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.step .d b { color: var(--text); font-weight: 600; }
+.step button { margin-top: 8px; }
+.field { display: grid; gap: 4px; margin: 10px 0; }
+.field span { font-size: 12px; color: var(--muted); }
+.field input { font: inherit; border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 8px;
+  padding: 7px 9px; }
+.err { color: var(--danger); font-size: 13px; min-height: 18px; }
+kbd { font: 11px ui-monospace, Menlo, monospace; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="offline" id="offline">Сервер таймлайна остановлен. Запустите в терминале: <b>tt open</b></div>
+  <header>
+    <h1>Учёт времени</h1>
+    <div class="datenav">
+      <button class="ghost" id="prev" title="Предыдущий день (←)">‹</button>
+      <div class="d" id="dlabel">…</div>
+      <button class="ghost" id="next" title="Следующий день (→)">›</button>
+      <button class="ghost" id="today">Сегодня</button>
+    </div>
+    <div class="spacer"></div>
+    <button class="ghost" id="guideShow" style="display:none">? Как пользоваться</button>
+    <button class="ghost" id="syncIssues" title="Загрузить ваши задачи из Jira">↻ Задачи Jira</button>
+  </header>
+  <div class="card guide" id="guide">
+    <div class="guide-h"><b>Как разобрать день</b><span class="spacer"></span>
+      <button class="ghost" id="guideHide" style="font-size:12px">Скрыть</button></div>
+    <div class="steps" id="steps"></div>
+  </div>
+  <div class="week" id="week"></div>
+  <div class="stats" id="stats"></div>
+  <div class="card tl">
+    <div class="tl-ev" id="tlEv"></div>
+    <div class="tl-track" id="tlTrack"></div>
+    <div class="tl-axis" id="tlAxis"></div>
+  </div>
+  <div class="grid">
+    <section class="card">
+      <div class="sec-h"><h2>Что делали</h2><span class="spacer"></span>
+        <div class="tabs"><button data-view="groups">По активностям</button><button data-view="chrono">Хронология</button></div></div>
+      <div id="blocks"></div>
+    </section>
+    <section class="card">
+      <div class="sec-h"><h2>Ворклоги</h2><span class="spacer"></span><span class="hint" id="wlTotal"></span></div>
+      <div id="worklogs"></div>
+      <div class="actions">
+        <button class="primary" id="push">Отправить в Jira</button>
+        <button id="copy" title="Таблица для ручного ввода в Tempo">Скопировать</button>
+        <button id="export" title="Весь день текстом в буфер: ворклоги, хронология, календарь — вставить в Claude, чат или заметки">Выгрузить день</button>
+        <button class="ghost" id="manual" title="Внесли вручную — больше не напоминать про этот день">Внёс сам</button>
+        <button class="ghost" id="refresh" title="Подтянуть то, что уже залогировано в Jira за день">Сверить с Jira</button>
+      </div>
+      <div class="foot" id="foot"></div>
+    </section>
+  </div>
+</div>
+<datalist id="issueList"></datalist>
+<dialog id="connect">
+  <b style="font-size:15px">Подключить Jira</b>
+  <div style="color:var(--muted);font-size:13px;margin-top:6px">Нужно один раз. Токен хранится в Связке ключей macOS,
+    не в файлах. После подключения задачи можно выбирать из списка, а часы — отправлять одной кнопкой.</div>
+  <label class="field"><span>Логин в Jira</span><input id="cUser" autocomplete="username" spellcheck="false"></label>
+  <label class="field"><span>Personal Access Token</span><input id="cToken" type="password" autocomplete="off"
+    placeholder="вставьте токен"></label>
+  <div style="font-size:13px">Где взять: <a id="cLink" target="_blank" rel="noopener">Jira → профиль → Personal Access Tokens</a>
+    → «Create token» → скопировать.</div>
+  <div class="err" id="cErr"></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+    <button id="cCancel">Отмена</button><button class="primary" id="cOk">Подключить</button></div>
+</dialog>
+<div class="toast" id="toast"></div>
+<div class="tip" id="tip"></div>
+<dialog id="dlg"><div id="dlgBody"></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+    <button id="dlgCancel">Отмена</button><button class="primary" id="dlgOk">OK</button></div></dialog>
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const WD = ["вс","пн","вт","ср","чт","пт","сб"];
+const MONTHS = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+let state = { date: new URLSearchParams(location.search).get("date") || iso(new Date()), day: null, issues: [], sel: null };
+
+function iso(d) { return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); }
+function parseIso(s) { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); }
+function addDays(s, n) { const d = parseIso(s); d.setDate(d.getDate()+n); return iso(d); }
+function dur(sec) { const m = Math.round(sec/60), h = Math.floor(m/60), r = m%60;
+  return h && r ? `${h}ч ${String(r).padStart(2,"0")}м` : h ? `${h}ч` : `${r}м`; }
+function hm(ts) { const d = new Date(ts*1000); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+function hmIn(sec) { const m = Math.round(sec/60); return Math.floor(m/60)+":"+String(m%60).padStart(2,"0"); }
+function hue(key) { let h = 0; for (const c of key) h = (h*31 + c.charCodeAt(0)) >>> 0; return h % 360; }
+function color(key) { return `oklch(var(--hue-l) var(--hue-c) ${hue(key)})`; }
+
+async function api(path, body) {
+  const opt = body ? { method: "POST", headers: {"Content-Type": "application/json", "X-TT": "1"},
+    body: JSON.stringify({ date: state.date, ...body }) } : {};
+  let r;
+  try { r = await fetch(path, opt); } catch (e) { $("#offline").style.display = "block"; throw e; }
+  $("#offline").style.display = "none";
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.status);
+  return j;
+}
+function toast(msg, err) { const t = $("#toast"); t.textContent = msg; t.className = "toast" + (err ? " err" : "");
+  t.style.display = "block"; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = "none", err ? 7000 : 2600); }
+function ask(html, okText = "OK") { return new Promise(res => { $("#dlgBody").innerHTML = html; $("#dlgOk").textContent = okText;
+  const d = $("#dlg"); d.showModal(); $("#dlgOk").onclick = () => { d.close(); res(true); };
+  $("#dlgCancel").onclick = () => { d.close(); res(false); }; }); }
+async function busy(btn, fn) { const t = btn ? btn.textContent : ""; if (btn) { btn.disabled = true; btn.textContent = "…"; }
+  try { await fn(); } catch (e) { toast(e.message, true); } finally { if (btn) { btn.disabled = false; btn.textContent = t; } } }
+
+async function load(date) {
+  if (date) state.date = date;
+  history.replaceState(null, "", "?date=" + state.date);
+  const [day, week] = await Promise.all([api("/api/day?date=" + state.date), api("/api/week?date=" + state.date)]);
+  state.day = day; renderWeek(week); render();
+}
+
+function renderWeek(week) {
+  $("#week").innerHTML = week.map(w => {
+    const d = parseIso(w.date), lab = `${WD[d.getDay()]} ${d.getDate()}`;
+    if (w.future) return `<div class="wd future"><div class="n">${lab}</div><div class="h">&nbsp;</div><div class="s">&nbsp;</div></div>`;
+    let s = "", cls = "none";
+    if (!w.total) s = "нет данных";
+    else if (w.status === "manual") { s = "внесено вручную"; cls = "ok"; }
+    else if (w.needs_review) { s = w.unassigned >= 900 ? `без задачи ${dur(w.unassigned)}` : "не отправлено"; cls = "need"; }
+    else if (w.pushed) { s = "в Jira ✓"; cls = "ok"; }
+    else s = "—";
+    return `<button class="wd ${w.date === state.date ? "sel" : ""}" data-d="${w.date}"><div class="n">${lab}</div>
+      <div class="h">${w.total ? dur(w.total) : "—"}</div><div class="s ${cls}">${esc(s)}</div></button>`;
+  }).join("");
+  $("#week").querySelectorAll("button.wd").forEach(b => b.onclick = () => load(b.dataset.d));
+}
+
+function renderGuide() {
+  const day = state.day, p = day.proposal;
+  let hidden = false; try { hidden = localStorage.getItem("tt-guide") === "hidden"; } catch (e) {}
+  $("#guide").style.display = hidden ? "none" : ""; $("#guideShow").style.display = hidden ? "" : "none";
+  const jiraOk = day.jira_configured, un = p.unassigned, pending = p.worklogs.filter(w => w.status === "draft" || w.status === "changed");
+  const s1 = { cls: jiraOk ? "done" : "now", t: jiraOk ? "Jira подключена" : "Подключите Jira",
+    d: jiraOk ? `${esc(day.jira_user)} · задач в списке: <b>${day.issues_count}</b>` :
+      "Один раз — чтобы выбирать задачи из списка и отправлять часы. Без этого можно только скопировать итог и внести вручную.",
+    btn: jiraOk ? "" : `<button class="primary" data-g="connect">Подключить Jira</button>` };
+  const s2 = { cls: !day.blocks.length ? "" : un ? (jiraOk ? "now" : "") : "done",
+    t: un ? `Разложите блоки — без задачи ${dur(un)}` : day.blocks.length ? "Всё разложено" : "Разложите блоки",
+    d: "Ниже — что вы делали, сгруппировано по активностям. Где трекер догадался — синяя подсказка <b>✦ задача</b>: нажмите её или <b>«Принять все подсказки»</b>. " +
+       "Остальное — впишите название задачи. <b>«запомнить»</b> — в следующие дни разложится само. Переписка — <b>«по задачам дня»</b>, не работа — <b>«личное»</b>." };
+  const s3 = { cls: pending.length ? (un ? "" : "now") : (p.worklogs.length ? "done" : ""),
+    t: pending.length ? "Проверьте и отправьте" : p.worklogs.length ? "Отправлено" : "Отправьте",
+    d: "Справа соберутся ворклоги по задачам: часы округлены до 15 мин, их и комментарий можно поправить. Затем <b>«Отправить в Jira»</b> или <b>«Скопировать»</b>, если вносите сами." };
+  $("#steps").innerHTML = [s1, s2, s3].map((x, i) => `<div class="step ${x.cls}"><div class="num">${x.cls === "done" ? "✓" : i + 1}</div>
+    <div><div class="t">${x.t}</div><div class="d">${x.d}</div>${x.btn || ""}</div></div>`).join("");
+  const c = $('[data-g="connect"]'); if (c) c.onclick = openConnect;
+  $("#syncIssues").style.display = jiraOk ? "" : "none";
+}
+
+function openConnect() {
+  const d = $("#connect"); $("#cUser").value = state.day?.jira_user || ""; $("#cToken").value = ""; $("#cErr").textContent = "";
+  const base = state.day?.base_url || "";
+  $("#cLink").href = base + "/secure/ViewProfile.jspa?selectedTab=com.atlassian.pats.pats-plugin:jira-user-personal-access-tokens";
+  d.showModal(); ($("#cUser").value ? $("#cToken") : $("#cUser")).focus();
+}
+
+function render() {
+  const day = state.day, p = day.proposal, d = parseIso(day.date);
+  $("#dlabel").textContent = `${WD[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  document.title = `Учёт времени · ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  $("#stats").innerHTML = [
+    ["Активно", dur(p.total)], ["К логированию", dur(p.to_log)],
+    ["Без задачи", dur(p.unassigned), p.unassigned >= 900], ["Личное", dur(p.skipped)],
+  ].map(([l, v, w]) => `<div class="stat ${w ? "warn" : ""}"><div class="v">${v}</div><div class="l">${l}</div></div>`).join("");
+  renderGuide(); renderTimeline(); renderBlocks(); renderWorklogs();
+}
+
+function renderTimeline() {
+  const day = state.day, bl = day.blocks, track = $("#tlTrack"), ev = $("#tlEv"), axis = $("#tlAxis");
+  if (!bl.length && !day.events.length) { track.innerHTML = `<div class="empty" style="padding:13px">За этот день активности нет</div>`;
+    axis.innerHTML = ""; ev.innerHTML = ""; return; }
+  const all = bl.map(b => [b.start, b.end]).concat(day.events.map(e => [e.start, e.end]));
+  let a = Math.min(...all.map(x => x[0])), z = Math.max(...all.map(x => x[1]));
+  a = Math.floor(a/3600)*3600; z = Math.ceil(z/3600)*3600; if (z - a < 6*3600) z = a + 6*3600;
+  const pos = t => ((t - a) / (z - a) * 100).toFixed(3) + "%", w = (s, e) => ((e - s) / (z - a) * 100).toFixed(3) + "%";
+  track.innerHTML = bl.map(b => {
+    const cls = b.skip || b.split ? "skip" : (b.issue ? "" : "un");
+    const style = `left:${pos(b.start)};width:${w(b.start, b.end)};${b.issue ? "background:" + color(b.issue) : ""}`;
+    return `<div class="tl-b ${cls} ${state.sel === b.id ? "sel" : ""}" data-id="${b.id}" style="${style}">${esc(b.issue || (b.split ? "÷" : b.skip ? "" : "?"))}</div>`;
+  }).join("");
+  ev.innerHTML = day.events.map(e => `<div style="left:${pos(e.start)};width:${w(e.start, e.end)}" title="${esc(e.title)}">${esc(e.title)}</div>`).join("");
+  let ax = ""; const step = (z - a) > 12*3600 ? 2 : 1;
+  for (let t = a; t <= z; t += 3600*step) ax += `<span style="left:${pos(t)}">${hm(t)}</span>`;
+  axis.innerHTML = ax;
+  track.querySelectorAll(".tl-b").forEach(el => {
+    const b = bl.find(x => x.id === el.dataset.id);
+    el.onclick = () => { state.sel = b.id; renderTimeline(); renderBlocks();
+      document.querySelector(`.blk[data-id="${b.id}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" }); };
+    el.onmousemove = e => { const t = $("#tip"); t.style.display = "block"; t.style.left = Math.min(e.clientX + 12, innerWidth - 370) + "px";
+      t.style.top = (e.clientY + 14) + "px";
+      t.textContent = `${hm(b.start)}–${hm(b.end)} · ${dur(b.seconds)}\n${b.issue || (b.skip ? "личное" : b.split ? "по задачам дня" : "без задачи")}\n` +
+        b.contexts.slice(0, 4).map(c => `· ${c.label} — ${dur(c.seconds)}`).join("\n"); };
+    el.onmouseleave = () => $("#tip").style.display = "none";
+  });
+}
+
+let VIEW = "groups";
+try { VIEW = localStorage.getItem("tt-view") || "groups"; } catch (e) {}
+
+function groupBlocks(bl) {
+  const m = new Map();
+  for (const b of bl) {
+    const k = b.theme || b.context_key || b.id;  // тема склеивает один проект из Claude, Figma, сайта
+    let g = m.get(k);
+    if (!g) { g = { key: k, label: b.label, kind: b.kind, blocks: [], seconds: 0, issues: new Set(), skip: true, split: true,
+      suggestion: null, hint: null, sources: new Set(), members: new Map() }; m.set(k, g); }
+    g.blocks.push(b); g.seconds += b.seconds;
+    const ck = b.context_key || b.id;
+    let mb = g.members.get(ck);
+    if (!mb) { mb = { key: ck, label: b.label, kind: b.kind, seconds: 0, blocks: [] }; g.members.set(ck, mb); }
+    mb.seconds += b.seconds; mb.blocks.push(b);
+    g.issues.add(b.issue || ""); if (!b.skip) g.skip = false; if (!b.split) g.split = false;
+    if (b.source) g.sources.add(b.source);
+    if (!g.suggestion && b.suggestion && b.suggestion.issue) g.suggestion = b.suggestion;
+    if (b.hint && (!g.hint || (g.hint.here && !b.hint.here))) g.hint = b.hint;  // подсказка про всю активность важнее
+  }
+  const gs = [...m.values()].map(g => {
+    const ms = [...g.members.values()].sort((a, b) => b.seconds - a.seconds);
+    g.label = ms[0].label; g.kind = ms[0].kind; g.others = ms.slice(1);
+    const openBlocks = g.blocks.filter(b => !b.issue && !b.skip && !b.split);
+    const parts = new Set(g.blocks.map(b => b.issue || (b.skip ? "личное" : b.split ? "по задачам дня" : "")));
+    return { ...g, issue: g.issues.size === 1 ? [...g.issues][0] : null, mixed: parts.size > 1,
+      open: openBlocks.length > 0, openSeconds: openBlocks.reduce((s, b) => s + b.seconds, 0),
+      parts: [...parts].filter(Boolean).join(" · ") };
+  });
+  const open = g => g.open;
+  return gs.sort((a, b) => (open(b) - open(a)) || (b.seconds - a.seconds));
+}
+
+function propose(g) {  // что предлагаем: подсказка модели (или Claude из /timesheet) либо из истории
+  if (g.suggestion) { const r = g.suggestion.reason || "";
+    return { issue: g.suggestion.issue, why: /^локально/.test(r) ? "модель: " + r.replace(/^локально: /, "") : "Claude: " + r, summary: issueSummary(g.suggestion.issue) }; }
+  if (g.hint && !g.hint.here) return { issue: g.hint.issue, why: g.hint.reason, summary: g.hint.summary || issueSummary(g.hint.issue) };
+  if (g.hint) {  // по соседям: только для тех отрезков, где она возникла, и без «запомнить»
+    const blocks = g.blocks.filter(b => !b.issue && !b.skip && !b.split && b.hint && b.hint.here && b.hint.issue === g.hint.issue);
+    return { issue: g.hint.issue, why: g.hint.reason, summary: g.hint.summary || issueSummary(g.hint.issue), blocks,
+      note: blocks.length < g.blocks.length ? ` · ${blocks.map(b => hm(b.start) + "–" + hm(b.end)).join(", ")}` : "" };
+  }
+  return null;
+}
+function acceptProposal(g, pr) {
+  return pr.blocks ? api("/api/assign", { issue: pr.issue, intervals: pr.blocks.map(b => [b.start, b.end]) })
+    : assignGroup(g, pr.issue, false, false, true);
+}
+function issueSummary(k) { return (state.issues.find(i => i.key === k) || {}).summary || ""; }
+
+async function assignGroup(g, issue, skip, split, remember) {
+  let d = null;  // у темы запоминаем каждую активность отдельно: завтра 5element.ru узнается и без Claude
+  for (const mb of g.members.values())
+    d = await api("/api/assign", { issue, skip, split, remember, context_key: mb.key, label: mb.label,
+      intervals: mb.blocks.map(b => [b.start, b.end]) });
+  return d;
+}
+
+function renderGroups() {
+  const gs = groupBlocks(state.day.blocks);
+  if (!gs.length) { $("#blocks").innerHTML = `<div class="empty">Пока нет данных за этот день</div>`; return; }
+  const openN = gs.filter(g => g.open).length;
+  const props = gs.filter(g => g.open && propose(g));
+  const plural = n => n % 10 === 1 && n % 100 !== 11 ? "активность" : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? "активности" : "активностей";
+  let html = "";
+  if (openN) html += `<div class="grp-h">Без задачи: ${openN} ${plural(openN)}<span class="spacer"></span>
+    <button id="localAI" style="font-size:12px;padding:3px 10px;margin-right:6px" title="Модель на этом Маке подберёт задачи по смыслу. Без интернета и токенов, работает только пока идёт подбор">✦ Подобрать задачи</button>
+    ${props.length ? `<button class="primary" id="acceptAll" style="font-size:12px;padding:3px 10px">Принять все подсказки (${props.length})</button>` : ""}</div>`;
+  let shownDone = false;
+  for (const g of gs) {
+    const isOpen = g.open;
+    if (!isOpen && !shownDone) { html += `<div class="grp-h">Разложено</div>`; shownDone = true; }
+    const times = g.blocks.length > 1 ? `${g.blocks.length} раз · ${hm(g.blocks[0].start)}–${hm(g.blocks[g.blocks.length - 1].end)}`
+      : `${hm(g.blocks[0].start)}–${hm(g.blocks[0].end)}`;
+    const pr = isOpen ? propose(g) : null;
+    const chip = pr ? `<span class="chip hint" data-act="hint" title="${esc(pr.why)}">✦ ${esc(pr.issue)} ${esc(pr.summary || "")}${esc(pr.note || "")}</span>` : "";
+    const src = !isOpen && g.sources.size === 1 ? `<span class="chip src">${SRC[[...g.sources][0]] || ""}</span>` : "";
+    const bar = g.skip ? "var(--personal)" : g.split ? "var(--faint)" : g.issue ? color(g.issue) : "var(--unassigned)";
+    const ph = g.skip ? "личное" : g.split ? "по задачам дня" : g.mixed ? (g.parts || "разные задачи") + (g.open ? " + без задачи" : "") : "задача: начните вводить…";
+    html += `<div class="blk" data-k="${esc(g.key)}">
+      <div class="bar" style="background:${bar}"></div>
+      <div class="tm"><span class="dur">${dur(g.seconds)}</span><span class="rng">${times}</span></div>
+      <div style="min-width:0">
+        <div class="lbl" title="${esc(g.label)}">${g.kind === "meeting" ? "🎙 " : g.kind === "claude" ? "✳︎ " : ""}${esc(g.label)}</div>
+        ${g.others.length ? `<div class="also" title="Одна тема — задача назначится всем">+ ${g.others.map(o => `${esc(o.label)} · ${dur(o.seconds)}`).join(", ")}</div>` : ""}
+        <div class="ctl">
+          <input class="issue-in" list="issueList" placeholder="${ph}" value="${esc(g.issue || "")}" spellcheck="false">
+          <label class="rem" title="Без галочки — только этот день"><input type="checkbox" checked> запомнить</label>
+          ${chip}
+          <button class="ghost" data-act="split" title="Разделить между задачами дня пропорционально">${g.split ? "↺ вернуть" : "по задачам дня"}</button>
+          <button class="ghost" data-act="skip">${g.skip ? "↺ вернуть" : "личное"}</button>
+          ${src}
+        </div>
+      </div></div>`;
+  }
+  $("#blocks").innerHTML = html;
+  const done = d => { state.day = d; render(); refreshWeek(); };
+  $("#blocks").querySelectorAll(".blk").forEach(el => {
+    const g = gs.find(x => x.key === el.dataset.k), inp = $(".issue-in", el), rem = $(".rem input", el);
+    const send = (issue, skip, split) => assignGroup(g, issue, skip, split, rem.checked).then(done).catch(e => toast(e.message, true));
+    inp.onchange = () => { const v = resolveIssueInput(inp.value); if (v !== false) send(v, false, false); };
+    inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); inp.onchange(); } };
+    $('[data-act="skip"]', el).onclick = () => send(null, !g.skip, false);
+    $('[data-act="split"]', el).onclick = () => send(null, false, !g.split);
+    const h = $('[data-act="hint"]', el); if (h) h.onclick = () => acceptProposal(g, propose(g)).then(done).catch(e => toast(e.message, true));
+  });
+  const loc = $("#localAI");
+  if (loc) loc.onclick = () => busy(loc, async () => {
+    loc.textContent = "Подбираю…";
+    const r = await api("/api/local_suggest", {});
+    state.day = r.day; render();
+    toast(r.result.saved ? `Подобрано задач: ${r.result.saved} из ${r.result.asked} — подсказки ✦ у активностей`
+      : r.result.asked ? "Уверенных совпадений не нашлось — выберите задачу вручную" : "Подбирать нечего");
+  });
+  const all = $("#acceptAll");
+  if (all) all.onclick = () => busy(all, async () => {
+    let d = null;
+    for (const g of props) d = await acceptProposal(g, propose(g));
+    if (d) done(d); toast(`Принято подсказок: ${props.length}`);
+  });
+}
+
+function resolveIssueInput(rawIn) {
+  const raw = rawIn.trim(); let v = raw.split(/\s/)[0].toUpperCase();
+  if (!raw) return null;
+  if (/^[A-Z][A-Z0-9_]+-\d+$/.test(v)) return v;
+  const q = raw.toLowerCase(), hits = state.issues.filter(i => (i.summary || "").toLowerCase().includes(q) || (i.project_name || "").toLowerCase().includes(q));
+  if (hits.length === 1) return hits[0].key;
+  toast(hits.length ? `Подходит несколько задач (${hits.length}) — выберите из списка` :
+    state.issues.length ? "Такой задачи нет в списке. Нажмите «↻ Задачи Jira» или введите ключ, напр. ALP-12" : "Подключите Jira или введите ключ, напр. ALP-12", true);
+  return false;
+}
+
+const SRC = { explicit: "ключ в заголовке", learned: "запомнено", rule: "правило", claude: "Claude", manual: "вручную", builtin: "авто",
+  screen: "по названию экрана" };
+function renderBlocks() {
+  document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === VIEW));
+  if (VIEW === "groups") return renderGroups();
+  const bl = state.day.blocks;
+  if (!bl.length) { $("#blocks").innerHTML = `<div class="empty">Нет блоков. Сборщик работает? <kbd>tt status</kbd></div>`; return; }
+  $("#blocks").innerHTML = bl.map(b => {
+    const sub = b.contexts.slice(1, 4).filter(c => c.seconds >= 60).map(c => `${c.label} ${dur(c.seconds)}`).join(" · ");
+    const sug = b.suggestion && (b.suggestion.issue || b.suggestion.category === "personal")
+      ? `<span class="chip sug" data-act="accept" title="${esc(b.suggestion.reason || "")}">✦ ${esc(b.suggestion.issue || "личное")} · ${Math.round((b.suggestion.confidence||0)*100)}%</span>`
+      : b.hint ? `<span class="chip hint" data-act="hint" title="${esc(b.hint.reason)}">✦ ${esc(b.hint.issue)} ${esc(b.hint.summary || "")}</span>` : "";
+    const src = b.source && (b.issue || b.skip || b.split) ? `<span class="chip src">${SRC[b.source] || b.source}</span>` : "";
+    const bar = b.skip ? "var(--personal)" : b.split ? "var(--faint)" : b.issue ? color(b.issue) : "var(--unassigned)";
+    return `<div class="blk ${state.sel === b.id ? "sel" : ""}" data-id="${b.id}">
+      <div class="bar" style="background:${bar}"></div>
+      <div class="tm"><span class="dur">${dur(b.seconds)}</span><span class="rng">${hm(b.start)}–${hm(b.end)}</span></div>
+      <div style="min-width:0">
+        <div class="lbl" title="${esc(b.label)}">${b.kind === "meeting" ? "🎙 " : b.kind === "claude" ? "✳︎ " : ""}${esc(b.label)}</div>
+        ${sub ? `<div class="sub" title="${esc(sub)}">${esc(sub)}</div>` : ""}
+        <div class="ctl">
+          <input class="issue-in" list="issueList" placeholder="${b.skip ? "личное" : b.split ? "по задачам дня" : state.day.issues_count ? "задача: начните вводить…" : "ключ, напр. ALP-12"}" value="${esc(b.issue || "")}" spellcheck="false" title="Название задачи или её ключ">
+          <label class="rem"><input type="checkbox" ${b.source === "manual" ? "" : "checked"}> запомнить</label>
+          ${sug}
+          <button class="ghost" data-act="split" title="Разделить это время между задачами дня пропорционально (переписка, общие созвоны)">${b.split ? "↺ вернуть" : "по задачам дня"}</button>
+          <button class="ghost" data-act="skip" title="Не логировать (личное)">${b.skip ? "↺ вернуть" : "личное"}</button>
+          ${src}
+        </div>
+      </div></div>`;
+  }).join("");
+  $("#blocks").querySelectorAll(".blk").forEach(el => {
+    const b = bl.find(x => x.id === el.dataset.id), inp = $(".issue-in", el), rem = $(".rem input", el);
+    const send = (issue, skip, split) => api("/api/assign", { issue, skip, split, remember: rem.checked, context_key: b.context_key,
+      label: b.label, start: b.start, end: b.end }).then(d => { state.day = d; render(); refreshWeek(); }).catch(e => toast(e.message, true));
+    const hb = $('[data-act="hint"]', el); if (hb) hb.onclick = () => b.hint.here  // по соседям — только этот отрезок
+      ? api("/api/assign", { issue: b.hint.issue, start: b.start, end: b.end }).then(d => { state.day = d; render(); refreshWeek(); }).catch(e => toast(e.message, true))
+      : send(b.hint.issue, false, false);
+    inp.onchange = () => { const raw = inp.value.trim(); let v = raw.split(/\s/)[0].toUpperCase();
+      if (raw && !/^[A-Z][A-Z0-9_]+-\d+$/.test(v)) {
+        // Ввели название — ищем задачу по нему.
+        const q = raw.toLowerCase(), hits = state.issues.filter(i => (i.summary || "").toLowerCase().includes(q) || (i.project_name || "").toLowerCase().includes(q));
+        if (hits.length === 1) v = hits[0].key;
+        else return toast(hits.length ? `Подходит несколько задач (${hits.length}) — выберите из списка` :
+          state.issues.length ? "Такой задачи нет в списке. Нажмите «↻ Задачи Jira» или введите ключ, напр. ALP-12" : "Подключите Jira, чтобы искать по названию, или введите ключ, напр. ALP-12", true);
+      }
+      send(v || null, false); };
+    inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); inp.onchange(); } };
+    $('[data-act="skip"]', el).onclick = () => send(null, !b.skip, false);
+    $('[data-act="split"]', el).onclick = () => send(null, false, !b.split);
+    const acc = $('[data-act="accept"]', el);
+    if (acc) acc.onclick = () => api("/api/accept", { context_keys: [b.context_key], labels: { [b.context_key]: b.label } })
+      .then(d => { state.day = d; render(); refreshWeek(); });
+    el.onclick = e => { if (e.target.closest("input,button,.chip,label")) return; state.sel = b.id; renderTimeline();
+      document.querySelectorAll(".blk.sel").forEach(x => x.classList.remove("sel")); el.classList.add("sel"); };
+  });
+}
+
+const ST = { draft: "черновик", pushed: "в Jira ✓", in_jira: "уже в Jira", changed: "изменён" };
+function renderWorklogs() {
+  const p = state.day.proposal, base = state.day.base_url;
+  $("#wlTotal").textContent = p.worklogs.length ? `итого ${dur(p.to_log)}` : "";
+  if (!p.worklogs.length) {
+    $("#worklogs").innerHTML = `<div class="empty">${p.unassigned ? "Привяжите блоки к задачам — здесь появятся ворклоги" : "Пока нечего логировать"}</div>`;
+  } else {
+    $("#worklogs").innerHTML = p.worklogs.map(w => `<div class="wl" data-k="${esc(w.issue)}">
+      <div class="wl-top"><span class="bar" style="width:10px;height:10px;border-radius:3px;background:${color(w.issue)}"></span>
+        <span class="wl-key"><a href="${esc(base)}/browse/${esc(w.issue)}" target="_blank" rel="noopener">${esc(w.issue)}</a></span>
+        <span class="wl-sum" title="${esc(w.summary || "")}">${esc(w.summary || "")}</span>
+        <span class="st ${w.status}">${ST[w.status]}</span>
+        <input class="wl-time" value="${hmIn(w.seconds)}" title="Фактически ${dur(w.raw_seconds)}${w.edited ? ", правлено вручную" : ""}">
+      </div>
+      <textarea class="wl-cmt" rows="1" placeholder="Комментарий к ворклогу">${esc(w.comment)}</textarea>
+      ${w.jira_logged && w.status !== "pushed" ? `<div class="sub" style="color:var(--muted);font-size:12px;margin-top:4px">В Jira за день уже ${dur(w.jira_logged)}</div>` : ""}
+      ${w.edited ? `<button class="ghost" data-act="reset" style="font-size:12px;padding:2px 6px;margin-top:4px">↺ авто (${dur(w.auto_seconds)})</button>` : ""}
+    </div>`).join("");
+    $("#worklogs").querySelectorAll(".wl").forEach(el => {
+      const k = el.dataset.k, t = $(".wl-time", el), c = $(".wl-cmt", el), w = p.worklogs.find(x => x.issue === k);
+      t.onchange = () => api("/api/draft", { issue: k, time: t.value }).then(d => { state.day = d; render(); }).catch(e => toast(e.message, true));
+      const fit = () => { if (!c.scrollHeight) return; c.style.height = "auto"; c.style.height = c.scrollHeight + 2 + "px"; };  // растёт по тексту
+      fit(); c.oninput = fit;
+      c.onchange = () => api("/api/draft", { issue: k, comment: c.value }).then(d => { state.day = d; renderWorklogs(); });
+      t.onkeydown = e => { if (e.key === "Enter") t.blur(); };
+      const r = $('[data-act="reset"]', el); if (r) r.onclick = () => api("/api/draft", { issue: k, reset: true }).then(d => { state.day = d; render(); });
+    });
+  }
+  const pending = p.worklogs.filter(w => w.status === "draft" || w.status === "changed");
+  $("#push").disabled = !pending.length || !state.day.jira_configured;
+  $("#push").title = state.day.jira_configured ? "" : "Сначала подключите Jira: tt setup";
+  $("#manual").textContent = state.day.status === "manual" ? "↺ Снять «внёс сам»" : "Внёс сам";
+  const foot = [];
+  if (!state.day.jira_configured) foot.push("Jira не подключена — шаг 1 вверху. Пока можно скопировать и внести вручную.");
+  if (p.unassigned >= 900) foot.push(`${dur(p.unassigned)} без задачи не попадут в ворклоги.`);
+  $("#foot").textContent = foot.join(" ");
+}
+
+async function refreshWeek() { try { renderWeek(await api("/api/week?date=" + state.date)); } catch (e) {} }
+async function loadIssues() { state.issues = await api("/api/issues");
+  $("#issueList").innerHTML = state.issues.map(i => `<option value="${esc(i.key)}" label="${esc(i.summary || "")}${i.project_name ? " · " + esc(i.project_name) : ""}"></option>`).join(""); }
+
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  VIEW = b.dataset.view; try { localStorage.setItem("tt-view", VIEW); } catch (e) {} renderBlocks(); });
+$("#guideHide").onclick = () => { try { localStorage.setItem("tt-guide", "hidden"); } catch (e) {} renderGuide(); };
+$("#guideShow").onclick = () => { try { localStorage.removeItem("tt-guide"); } catch (e) {} renderGuide(); };
+$("#cCancel").onclick = () => $("#connect").close();
+$("#cOk").onclick = e => busy(e.currentTarget, async () => {
+  $("#cErr").textContent = "";
+  try { const r = await api("/api/jira/connect", { username: $("#cUser").value, token: $("#cToken").value });
+    $("#connect").close(); toast(`Jira подключена: ${r.name}. Задач загружено: ${r.issues}`);
+    await loadIssues(); await load(); }
+  catch (err) { $("#cErr").textContent = err.message; } });
+$("#prev").onclick = () => load(addDays(state.date, -1));
+$("#next").onclick = () => load(addDays(state.date, 1));
+$("#today").onclick = () => load(iso(new Date()));
+document.addEventListener("keydown", e => { if (e.target.closest("input,textarea") || $("#dlg").open) return;
+  if (e.key === "ArrowLeft") $("#prev").click(); if (e.key === "ArrowRight") $("#next").click(); });
+$("#syncIssues").onclick = e => busy(e.currentTarget, async () => { const r = await api("/api/issues/sync", {}); await loadIssues(); toast(`Загружено задач: ${r.synced}`); });
+$("#export").onclick = e => busy(e.currentTarget, async () => {
+  const { text } = await api("/api/report?date=" + state.date);
+  try { await navigator.clipboard.writeText(text); toast("День скопирован — вставьте в Claude, чат или заметки"); }
+  catch (err) { await ask(`<pre style="max-height:60vh;overflow:auto;white-space:pre-wrap">${esc(text)}</pre>`, "Закрыть"); } });
+$("#copy").onclick = async () => { const p = state.day.proposal;
+  const txt = p.worklogs.map(w => `${w.issue}\t${hmIn(w.seconds)}\t${w.comment}`).join("\n");
+  try { await navigator.clipboard.writeText(txt); toast("Скопировано: задача ⇥ часы ⇥ комментарий"); }
+  catch (e) { await ask(`<pre>${esc(txt)}</pre>`, "Закрыть"); } };
+$("#push").onclick = async e => { const btn = e.currentTarget;  // после await e.currentTarget уже пустой
+  const p = state.day.proposal, todo = p.worklogs.filter(w => w.status === "draft" || w.status === "changed");
+  const lines = todo.map(w => `${w.issue.padEnd(10)} ${hmIn(w.seconds).padStart(5)}  ${w.comment.slice(0, 60)}${w.status === "changed" ? "  (обновить)" : ""}`).join("\n");
+  if (!await ask(`<b>Отправить в Jira за ${esc(state.date)}?</b><pre>${esc(lines)}</pre>${p.unassigned ? `<div style="color:var(--muted)">Без задачи ${dur(p.unassigned)} — не отправляется.</div>` : ""}`, "Отправить")) return;
+  busy(btn, async () => { const r = await api("/api/push", {}); state.day = r.day; render(); refreshWeek();
+    const errs = r.results.filter(x => x.action === "error"); const ok = r.results.filter(x => x.action === "create" || x.action === "update");
+    if (errs.length) toast(errs.map(x => `${x.issue}: ${x.error}`).join("\n"), true); else toast(`Отправлено ворклогов: ${ok.length}`); }); };
+
+setInterval(() => { if (!document.hidden) api("/api/ping").catch(() => {}); }, 60000);
+loadIssues().catch(() => {});
+load().then(() => { if (new URLSearchParams(location.search).get("connect") && !state.day.jira_configured) openConnect(); })
+  .catch(e => toast(e.message, true));
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# Сборки и материалы для отправки — не код
+dist/
+share/
+promo/
+# Личное и локальное: скриншоты дизайн-проверок, локальные скиллы Claude, кеши
+.taste-skill/
+.claude/
+skills-lock.json
+__pycache__/
+*.pyc
+.DS_Store
