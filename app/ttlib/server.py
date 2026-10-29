@@ -39,7 +39,10 @@ def day_payload(conn, cfg, date):
                 jira_configured=jira.Jira(cfg).configured, base_url=cfg["jira"]["base_url"],
                 jira_user=cfg["jira"].get("username") or "",
                 issues_count=conn.execute("SELECT COUNT(*) FROM issues WHERE summary IS NOT NULL").fetchone()[0],
-                llm_enabled=bool(cfg["llm"].get("enabled")))
+                llm_enabled=bool(cfg["llm"].get("enabled")),
+                # Норма дня для подсказки «добрать до 8 часов»; в выходные её нет.
+                norm={"seconds": int(float(cfg["worklog"].get("day_hours") or 0) * 3600) if date.weekday() < 5 else 0,
+                      "ends": cfg["worklog"].get("day_ends") or "17:00"})
 
 
 def week_payload(conn, cfg, date):
@@ -342,6 +345,7 @@ class Handler(BaseHTTPRequestHandler):
                     "version": app_version(),
                     "update": dict(update.state(cfg, background=False), can_install=update.can_install()),
                     "storage": storage(conn),
+                    "day_hours": cfg["worklog"].get("day_hours") or 0,
                 })
             if u.path == "/api/update/check":
                 c = update.check(cfg)
@@ -505,6 +509,12 @@ class Handler(BaseHTTPRequestHandler):
                 config.save_user(upd)
                 from .remind import install_agents
                 install_agents(config.load(), collector=False)
+                return self._json({"ok": True})
+            if path == "/api/settings/workday":
+                h = float(body.get("hours") or 0)
+                if not 0 <= h <= 14:
+                    return self._json({"error": "Норма дня — от 0 до 14 часов"}, 400)
+                config.save_user({"worklog": {"day_hours": h}})
                 return self._json({"ok": True})
             if path == "/api/update/install":
                 update.install_async(cfg, os.getpid())

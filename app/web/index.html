@@ -364,7 +364,9 @@ body.dragging .drop-on { outline: 2px solid var(--blue); outline-offset: 2px; }
 .wl .src .ico.ph-i { font-size: 10px; }
 .wl .src .n { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wl .src .d { font-weight: 600; font-variant-numeric: tabular-nums; }
-.wl .src.more { color: var(--muted); padding: 4px 0 4px 28px; min-height: 0; line-height: 17px; }
+.wl .src.more { color: var(--muted); padding: 4px 0 4px 28px; min-height: 0; line-height: 17px; align-items: flex-start; }
+.wl .src.more .n { white-space: normal; }
+.wl .src.more .d { font-weight: 500; }
 .wl .src button { flex: none; border: 0; background: none; color: var(--muted); font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
 .wl .src button:hover { background: var(--card); color: var(--ink); }
 .wl .src button.rm { padding: 4px 6px; }
@@ -500,6 +502,20 @@ dialog.set h2 { font-size: 28px; margin: 0; }
 .day .tools { display: flex; gap: 6px; align-items: center; margin-left: 6px; position: relative; }
 .day .tools .circle { width: 34px; height: 34px; background: var(--well); }
 .sendrow { display: flex; gap: 8px; align-items: center; margin-top: 16px; }
+/* «Добрать до нормы»: только предложение — выбираете задачу, куда добавить недостающее время. */
+.topup { margin-top: 12px; padding: 14px 14px 10px; border-radius: var(--r-l); background: var(--blue-soft); color: var(--blue-text); }
+.topup .tt b { display: block; font-size: 14px; font-weight: 600; }
+.topup .tt span { display: block; margin-top: 2px; font-size: 12px; line-height: 16px; opacity: .85; }
+.topup .opts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; margin-top: 10px; }
+.topup .opt { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: 0; border-radius: 10px; background: var(--card); color: var(--ink); font-size: 13px; text-align: left; cursor: pointer; }
+.topup .opt:hover { outline: 2px solid var(--blue); }
+.topup .opt i { flex: none; width: 3px; height: 16px; border-radius: 2px; background: var(--p, var(--muted)); }
+.topup .opt b { flex: none; font-weight: 600; font-size: 12px; }
+.topup .opt .s { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+.topup .opt .v { flex: none; font-weight: 600; font-variant-numeric: tabular-nums; }
+.topup .no { margin-top: 6px; border: 0; background: none; color: inherit; opacity: .75; font-size: 12px; padding: 4px 2px; cursor: pointer; }
+.topup .no:hover { opacity: 1; text-decoration: underline; }
+#wdSeg { flex: none; } #wdSeg button { white-space: nowrap; }
 .sendrow .send { margin-top: 0; flex: 1; }
 .sendrow .circle { width: 52px; height: 52px; background: var(--well); flex: none; }
 .sendrow .menu { top: auto; bottom: 60px; right: 0; left: auto; }
@@ -611,6 +627,7 @@ html.native .wrap { padding-top: 56px; }
       <div class="big" id="stackTotal">0:00</div>
       <div class="bigsub" id="stackSub"></div>
       <div class="wls" id="wls"></div>
+      <div id="topup"></div>
       <div class="sendrow">
       <button class="send" id="push"><span id="pushLabel">Залогировать</span><span class="arr"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 14 14 6M7.5 6H14v6.5"/></svg></span></button>
       <div style="position:relative" class="morewrap">
@@ -887,7 +904,7 @@ function renderLeft() {
     <div id="done"></div></section>`;
   box.innerHTML = h;
   bindWaits();
-  $$(".seg button").forEach(b => { b.classList.toggle("on", b.dataset.view === S.view); b.onclick = () => { S.view = b.dataset.view; store.set("tt-view", S.view); renderLeft(); }; });
+  $$(".seg button[data-view]").forEach(b => { b.classList.toggle("on", b.dataset.view === S.view); b.onclick = () => { S.view = b.dataset.view; store.set("tt-view", S.view); renderLeft(); }; });
   if (S.view === "chrono") renderChrono($("#done")); else renderDone($("#done"));
 }
 
@@ -1070,6 +1087,7 @@ function renderStack() {
   $("#stackNote").innerHTML = p.unassigned >= 60 ? `<b>${dur(p.unassigned)}</b> ждут решения и не уйдут` : "";
   const fd = (p.folded || []);
   $("#stackNote").innerHTML = fd.length ? `+ ${fd.map(f => `${esc(f.issue)} ${hmm(f.seconds)}`).join(", ")} — меньше ${Math.round(p.min_sec / 60)} мин, добавлено к задачам выше` : "";
+  renderTopup();
   $("#manualLabel").textContent = day.status === "manual" ? "Снять отметку «внесён»" : "Отметить день как внесённый";
   $("#manualSub").textContent = day.status === "manual" ? "Трекер снова будет напоминать о дне" : "Трекер перестанет о нём напоминать";
 }
@@ -1086,11 +1104,50 @@ function srcList(w) {
     const act = w.jira_id || w.part ? "" : i > 0 ? `<button data-s="${i}" data-to="${esc(s.key)}" title="Отдельный ворклог в ${esc(w.issue)}: своё время и свой комментарий">Отдельно</button>` : "";
     const rm = !w.jira_id && own(s) ? `<button class="rm" data-s="${i}" title="Убрать из задачи — вернётся в «Ждут решения»" aria-label="Убрать">✕</button>` : "";
     return `<div class="src">${icon(s.icon, s.label)}<span class="n" title="${esc(s.label)}">${esc(s.label.replace(/^Claude Code: /, ""))}</span><span class="d">${hmm(s.seconds)}</span>${act}${rm}</div>`; };
-  const extra = [small.length ? `ещё ${small.length} ${plural(small.length, "окно", "окна", "окон")} по мелочи · ${hmm(small.reduce((x, s) => x + s.seconds, 0))}` : "",
-    w.split_seconds >= 60 ? `+${hmm(w.split_seconds)} — доля общего времени «делится между задачами»` : "",
-    w.folded_seconds >= 60 ? `+${hmm(w.folded_seconds)} — мелкие задачи дня короче ${Math.round(S.day.proposal.min_sec / 60)} мин` : ""].filter(Boolean);
-  return `<div class="srcs"><div class="sh">Из чего сложилось · ${dur(w.raw_seconds)}${w.seconds !== w.raw_seconds ? `, в Jira ${hmm(w.seconds)}` : ""}</div>
-    ${big.map(s => row(s, w.sources.indexOf(s))).join("")}${extra.map(x => `<div class="src more">${esc(x)}</div>`).join("")}</div>`;
+  // Не «доля общего времени», а что именно добавилось: названия окон и задач, и почему. Пара минут — шум, не показываем.
+  const names = (list, n = 3) => list.slice(0, n).join(", ") + (list.length > n ? ` и ещё ${list.length - n}` : "");
+  const splitBy = {}; for (const b of S.day.blocks) if (b.split) splitBy[b.label] = (splitBy[b.label] || 0) + b.seconds;
+  const splitNames = Object.keys(splitBy).sort((a, b) => splitBy[b] - splitBy[a]).map(l => l.replace(/^Claude Code: /, "").replace(/ — .*$/, ""));
+  const folded = (S.day.proposal.folded || []).map(f => f.issue);
+  const extra = [
+    small.length && [`Окна меньше 5 минут: ${names(small.map(s => s.label.replace(/^Claude Code: /, "").replace(/ — .*$/, "")))}`, hmm(small.reduce((x, s) => x + s.seconds, 0)),
+      "Окна, открытые меньше 5 минут за это время"],
+    w.split_seconds >= 300 && [`${names(splitNames)} — без задачи, разложено по всем задачам дня`, "+" + hmm(w.split_seconds),
+      `Короткие активности без задачи (меньше 15 минут за день) и отмеченные «Разделить между задачами» раскладываются по всем задачам дня пропорционально их времени. Сюда пришло ${dur(w.split_seconds)}`],
+    w.folded_seconds >= 300 && [`${names(folded)} — задачи короче ${Math.round(S.day.proposal.min_sec / 60)} мин, добавлены к остальным`, "+" + hmm(w.folded_seconds),
+      `Задачи меньше ${Math.round(S.day.proposal.min_sec / 60)} минут за день отдельно не логируются — их время добавлено к остальным задачам`],
+  ].filter(Boolean);
+  const jira = w.seconds === w.raw_seconds ? "" : w.edited ? `, в Jira ${hmm(w.seconds)} — вы поправили` : `, в Jira ${hmm(w.seconds)} — округлено до 15 мин`;
+  return `<div class="srcs"><div class="sh">Из чего сложилось · ${dur(w.raw_seconds)}${jira}</div>
+    ${big.map(s => row(s, w.sources.indexOf(s))).join("")}${extra.map(([n, d, t]) => `<div class="src more" title="${esc(t)}"><span class="n">${esc(n)}</span><span class="d">${d}</span></div>`).join("")}</div>`;
+}
+
+// Вечером (или за прошедший день) залогировано меньше нормы: трекер не видит созвоны без компьютера,
+// обсуждения у стола, раздумья. Предлагаем добрать недостающее в задачу дня — выбираете вы, сам он ничего не добавляет.
+function renderTopup() {
+  const box = $("#topup"), day = S.day, p = day.proposal, norm = day.norm?.seconds || 0, key = "topup:" + day.date;
+  const ws = p.worklogs.filter(w => !w.jira_id && w.status !== "in_jira"), now = new Date(), today = iso(now);
+  const [eh, em] = (day.norm?.ends || "17:00").split(":").map(Number);
+  const late = day.date < today || (day.date === today && now.getHours() * 60 + now.getMinutes() >= eh * 60 + em);
+  const gap = Math.round((norm - p.to_log) / 900) * 900;
+  let off = false; try { off = localStorage.getItem(key) === "no"; } catch (e) {}
+  if (!norm || !late || off || gap < 900 || !ws.length) { box.innerHTML = ""; return; }
+  // Пропорционально: недостающее делится по времени задач, кратно 15 минутам, сумма сходится.
+  const prop = () => { const sum = ws.reduce((x, w) => x + w.seconds, 0) || 1, raw = ws.map(w => gap * w.seconds / sum / 900);
+    const add = raw.map(Math.floor); let rest = gap / 900 - add.reduce((x, y) => x + y, 0);
+    raw.map((r, i) => [r - add[i], i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (rest > 0) { add[i]++; rest--; } });
+    return add.map(n => n * 900); };
+  box.innerHTML = `<div class="topup"><div class="tt"><b>До ${norm / 3600} ч не хватает ${hmm(gap)}</b>
+      <span>Трекер не видит созвоны без компьютера, обсуждения и раздумья. Добавить это время к задаче?</span></div>
+    <div class="opts">${ws.map((w, i) => `<button class="opt" data-i="${i}" style="--p:${pastel(w.issue)}"><i></i><b>${esc(w.issue)}</b><span class="s">${esc(w.summary || "")}</span><span class="v">${hmm(w.seconds)} → ${hmm(w.seconds + gap)}</span></button>`).join("")}
+      ${ws.length > 1 ? `<button class="opt" data-all><i></i><span class="s" style="color:inherit">По всем пропорционально</span><span class="v">+${hmm(gap)}</span></button>` : ""}</div>
+    <button class="no">Не нужно за этот день</button></div>`;
+  const add = (pairs, what) => busy(null, async () => { let d = null;
+    for (const [w, sec] of pairs) if (sec) d = await api("/api/draft", { issue: w.issue, part: w.part, time: hmm(w.seconds + sec) });
+    if (d) setDay(d); toast(`Добавил ${hmm(gap)} ${what}. Вернуть — в карточке задачи, «вернуть авто»`); });
+  $$(".opt[data-i]", box).forEach(b => b.onclick = () => { const w = ws[+b.dataset.i]; add([[w, gap]], "к " + w.issue); });
+  $(".opt[data-all]", box)?.addEventListener("click", () => { const a = prop(); add(ws.map((w, i) => [w, a[i]]), "по задачам дня"); });
+  $(".no", box).onclick = () => { try { localStorage.setItem(key, "no"); } catch (e) {} box.innerHTML = ""; };
 }
 
 function editWorklog(el, w) {
@@ -1246,6 +1303,8 @@ async function openSettings(focus) {
         <div class="srow"><span>По каким дням</span><span class="dchips">${DAYS.map(([k, l]) => `<button class="dch ${rm.days.includes(k) ? "on" : ""}" data-d="${k}">${l}</button>`).join("")}</span></div>
         <div class="srow"><span>Как напоминать<small>${rm.style === "notification" ? "Уведомление в углу экрана, не отвлекает" : "Окно с кнопкой «Разобрать» — сложно пропустить"}</small></span><span class="seg"><button data-st="dialog" class="${rm.style !== "notification" ? "on" : ""}">Окно</button><button data-st="notification" class="${rm.style === "notification" ? "on" : ""}">Уведомление</button></span></div>
       </div></section>
+    <section><h3>Рабочий день</h3>
+      <div class="srow"><span>Норма в день<small>После 17:00, если залогировано меньше, предложит добавить недостающее к одной из задач</small></span><span class="seg" id="wdSeg">${[[0, "нет"], [6, "6 ч"], [7, "7 ч"], [8, "8 ч"], [9, "9 ч"]].map(([h, l]) => `<button data-h="${h}" class="${+st.day_hours === h ? "on" : ""}">${l}</button>`).join("")}</span></div></section>
     <section><h3>Доступы</h3><div id="sPerm">${permRows(pm)}</div></section>
     <section id="sAIs"><h3>Подбор задач нейросетью</h3><div id="sAI">${aiRows(st.local)}</div></section>
     <section><h3>Хранилище</h3><div id="sStore">${storeRows(st.storage)}</div></section>
@@ -1255,11 +1314,13 @@ async function openSettings(focus) {
       <div id="upd">${updRows(st.update || {})}</div></section>`;
   const B = $("#setBody");
   const saveRem = () => api("/api/settings", { reminder_enabled: $("#rOn", B).checked, reminder_time: $("#rTime", B).value.trim(),
-    reminder_days: $$(".dch.on", B).map(x => x.dataset.d), reminder_style: $(".seg .on", B).dataset.st }).catch(e => toast(e.message, true));
+    reminder_days: $$(".dch.on", B).map(x => x.dataset.d), reminder_style: $(".seg:not(#wdSeg) .on", B).dataset.st }).catch(e => toast(e.message, true));
   $("#rOn", B).onchange = () => { $("#rMore", B).hidden = !$("#rOn", B).checked; saveRem(); };
   $("#rTime", B).onchange = () => { $("#rWhen", B).textContent = parseInt($("#rTime", B).value) >= 15 ? "Вечером — если сегодняшний день не ушёл в Jira" : "Утром — если вчерашний рабочий день не ушёл в Jira"; saveRem(); };
   $$(".dch", B).forEach(b => b.onclick = () => { b.classList.toggle("on"); saveRem(); });
-  $$(".seg button", B).forEach(b => b.onclick = () => { $$(".seg button", B).forEach(x => x.classList.toggle("on", x === b));
+  $$("#wdSeg button", B).forEach(b => b.onclick = () => { $$("#wdSeg button", B).forEach(x => x.classList.toggle("on", x === b));
+    api("/api/settings/workday", { hours: +b.dataset.h }).then(() => load(S.day?.date)).catch(e => toast(e.message, true)); });
+  $$(".seg:not(#wdSeg) button", B).forEach(b => b.onclick = () => { $$(".seg:not(#wdSeg) button", B).forEach(x => x.classList.toggle("on", x === b));
     b.closest(".srow").querySelector("small").textContent = b.dataset.st === "notification" ? "Уведомление в углу экрана, не отвлекает" : "Окно с кнопкой «Разобрать» — сложно пропустить"; saveRem(); });
   bindPermRows(); bindAI(); bindStore(); renderUpd(st.update || {});
   $("#uAuto", B).onchange = e => api("/api/update/auto", { on: e.currentTarget.checked }).catch(er => toast(er.message, true));

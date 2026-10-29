@@ -464,7 +464,8 @@ def _auto_split(blocks, limit):
     """Мелочь без задачи и без подсказки — по задачам дня: определить её невозможно, а разбирать вручную долго.
 
     Считается по активности за весь день (Telegram 4 раза по 3 мин = 12 мин — мелочь), с учётом тем.
-    Что вы разложили сами, не трогаем; подсказку можно принять одним кликом, поэтому её тоже не трогаем.
+    Что вы разложили сами, не трогаем. Подсказка («похоже на ALP-12») мелочь не спасает — две минуты
+    Telegram не стоят решения. Исключение — созвоны: даже короткий созвон — конкретная работа.
     """
     if not limit:
         return
@@ -474,7 +475,7 @@ def _auto_split(blocks, limit):
             continue
         k = b.get("theme") or b["context_key"] or b["id"]
         total[k] += b["seconds"]
-        if b.get("hint") or (b["suggestion"] and b["suggestion"].get("issue")):
+        if b["kind"] == "meeting" and (b.get("hint") or (b["suggestion"] and b["suggestion"].get("issue"))):
             hinted.add(k)
     for b in blocks:
         k = b.get("theme") or b["context_key"] or b["id"]
@@ -668,30 +669,51 @@ def comment_part(c):
 
 
 def build_comment(parts, summary=None):
-    """«Анализ мобильного приложения; макеты: Мои обращения, Клиники; встреча «Дейлик»»."""
-    screens = [t for (k, t), sec in parts if k == "screen" and sec >= 30]
-    out, seen = [], set()
-    for (k, t), sec in parts:
-        if sec < 60 and k != "screen" or (k, t) in seen:
-            continue
-        seen.add((k, t))
-        if k == "work" or k == "doc":
-            out.append(t)
+    """«Логотип Альфа с интеграцией текста. Встреча «Обзор макетов». Макеты: Корзина, Фильтры».
+
+    Только заметное по времени (минута в чужом файле Figma — не работа), без повторов: файл, о котором
+    уже говорит сессия Claude («Логотип Альфа…» и макет «Альфа»), и название задачи во встрече не дублируются.
+    """
+    clean = lambda t: re.sub(r"\s+", " ", t or "").strip(" .;,—-")
+    total = sum(sec for _, sec in parts) or 1
+    floor = max(180, total * 0.08)
+    items = []  # [вид, текст, секунды]
+    for i, ((k, t), sec) in enumerate(parts):
+        t = clean(t)
+        if t and k != "screen" and (i == 0 or sec >= floor):
+            items.append([k, t, sec])
+    # Файл, который называет описание работы, — та же работа: время к ней, файл отдельно не пишем.
+    for it in [x for x in items if x[0] == "file"]:
+        name = it[1].split("/")[-1].strip().lower()
+        host = next((x for x in items if x[0] in ("work", "doc") and len(name) >= 3
+                     and re.search(r"(?<!\w)%s(?!\w)" % re.escape(name), x[1].lower())), None)
+        if host:
+            host[2] += it[2]
+            items.remove(it)
+    items.sort(key=lambda x: -x[2])
+    has_meeting = any(x[0] == "meeting" for x in items)
+    out = []
+    for k, t, _ in items:
+        if k == "meeting":
+            # «Обзор макетов Корзина 2.0» в задаче «Корзина 2.0» → «Обзор макетов».
+            short = clean(re.sub(re.escape(clean(summary)), " ", t, flags=re.I)) if summary and clean(summary) else t
+            t = "встреча «%s»" % (short if len(short) >= 4 else t)
         elif k == "file":
-            out.append("макет «%s»" % t)
-        elif k == "meeting":
-            out.append("встреча «%s»" % t)
-        elif k == "call" and ("call", "") not in seen:
-            seen.add(("call", ""))
-            out.append("созвон")
+            t = "макет «%s»" % t.split("/")[-1].strip()
+        elif k == "call":
+            if has_meeting:
+                continue
+            t = "созвон"
+        out.append(t)
+    screens = [clean(t) for (k, t), sec in parts if k == "screen" and sec >= 30]
     if screens:
         # Экраны — после основной работы и не больше трёх (по времени), иначе вытесняют главное.
         uniq = list(dict.fromkeys(screens))
         out.append("макеты: " + ", ".join(uniq[:3]) + (" и др." if len(uniq) > 3 else ""))
-    text = "; ".join(out)
-    if not text:
+    out = list(dict.fromkeys(x for x in out if x))
+    if not out:
         return summary or ""
-    return (text[0].upper() + text[1:])[:250]
+    return ". ".join(x[0].upper() + x[1:] for x in out)[:250]
 
 
 def merge_labels(labels):

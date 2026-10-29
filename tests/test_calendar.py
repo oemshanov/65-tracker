@@ -4,6 +4,10 @@ import os
 import sys
 import time
 
+# Тест стирает и пишет данные — только во временную базу, не в настоящую.
+if not os.environ.get("TT_HOME") or os.path.realpath(os.environ["TT_HOME"]) == os.path.realpath(
+        os.path.expanduser("~/Library/Application Support/TimeTracker")):
+    sys.exit("Нужна временная база: TT_HOME=$(mktemp -d) python3 " + " ".join(sys.argv))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 from ttlib import claude_sessions, config, db, remind  # noqa: E402
 from ttlib.segment import build_day  # noqa: E402
