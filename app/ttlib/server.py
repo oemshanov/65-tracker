@@ -491,6 +491,17 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/refresh_logged":
                 jira.refresh_logged(conn, cfg, date)
                 return self._json(day_payload(conn, cfg, date))
+            if path == "/api/jira/add":
+                # «Не хватает 0:30 — добавить в задачу»: отдельный ворклог за этот день, затем сверка.
+                issue = (body.get("issue") or "").strip().upper()
+                secs = parse_dur(body.get("time") or "")
+                if not issue or not secs or secs > 12 * 3600:
+                    return self._json({"error": "Нужны задача и время"}, 400)
+                j = jira.Jira(cfg)
+                started = dt.datetime.combine(date, dt.time(hour=17)).timestamp()
+                j.add_worklog(issue, started, secs, (body.get("comment") or "").strip())
+                jira.sync_logged(conn, cfg, date, date, j)
+                return self._json(day_payload(conn, cfg, date))
             if path == "/api/remind/test":
                 # Напоминание сейчас — проверить, что уведомление доходит. Окно-диалог ждёт ответа, поэтому в фоне.
                 from . import remind

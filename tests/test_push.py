@@ -128,4 +128,21 @@ assert [x["action"] for x in r if x["issue"] == "SB-77"] == ["create", "create"]
 assert len([k for k, _ in WORKLOGS if k == "SB-77"]) == 2
 r = jira.push_day(conn, cfg, date)
 assert not any(x["action"] == "create" for x in r), r
+
+# Сверка с Jira: после отправки день знает, сколько в Jira; недостающее добавляется одной записью.
+from ttlib import remind  # noqa: E402
+cfg["worklog"]["day_hours"] = 8
+cfg["day"]["workdays"] = [1, 2, 3, 4, 5, 6, 7]  # 24.10 — суббота; для проверки считаем её рабочей
+js = remind.jira_state(conn, cfg, date)
+logged0 = sum(v["timeSpentSeconds"] for v in WORKLOGS.values())
+print("сверка:", {k: js[k] for k in ("state", "logged", "target", "missing")})
+assert js["logged"] == logged0 and js["state"] in ("partial", "empty", "closed"), js
+if js["missing"] >= 900:
+    j = jira.Jira(cfg)
+    j.add_worklog("INT-5", dt.datetime.combine(date, dt.time(17)).timestamp(), js["missing"], "")
+    jira.sync_logged(conn, cfg, date, date, j)
+    js2 = remind.jira_state(conn, cfg, date)
+    print("после добавления:", {k: js2[k] for k in ("state", "logged", "missing")})
+    assert js2["state"] == "closed" and js2["logged"] == logged0 + js["missing"], js2
+    assert not remind.day_needs_review(conn, cfg, date, check_jira=False)[0]
 print("OK: все проверки прошли")

@@ -57,6 +57,7 @@ def jira_state(conn, cfg, date, p=None):
     worked = int(round(work / 900.0)) * 900 if work >= 30 * 60 else 0
     target = min(norm, worked) if norm else worked
     out = {"logged": sum(r["seconds"] for r in rows if r["issue"] != "*"),
+           "issues": {r["issue"]: r["seconds"] for r in rows if r["issue"] != "*"},
            "checked": max(r["fetched"] for r in rows) if rows else None,
            "target": target, "norm": norm, "worked": work}
     out["missing"] = max(0, target - out["logged"])
