@@ -325,6 +325,7 @@ body.dragging .drop-on { outline: 2px solid var(--blue); outline-offset: 2px; }
 .tcard { position: relative; }
 :root[data-theme="light"] .tcard::before { display: none; }
 @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .tcard::before { display: none; } }
+.wlh { margin: 14px 4px 6px; font-size: 12px; color: var(--muted); }
 .wl .k { display: inline-flex; align-items: center; gap: 8px; font: 600 12px var(--text); min-width: 0; }
 .wl .k i { display: none; }  /* цвет задачи уже показан полоской слева */
 .wl .k a:hover { text-decoration: underline; }
@@ -639,7 +640,7 @@ html.native .wrap { padding-top: 56px; }
     <div class="rcol">
 
       <aside class="stack" aria-label="Уйдёт в Jira">
-      <div class="ph"><img class="jira" id="jiraIco" alt="" src="/api/icon?jira=1" onerror="this.style.display='none'"><h2>Уйдёт в Jira</h2></div>
+      <div class="ph"><img class="jira" id="jiraIco" alt="" src="/api/icon?jira=1" onerror="this.style.display='none'"><h2 id="stackH">Уйдёт в Jira</h2></div>
       <div class="big" id="stackTotal">0:00</div>
       <div class="bigsub" id="stackSub"></div>
       <div id="jstate"></div>
@@ -1102,20 +1103,41 @@ function accept(g, pr, remember) {
 /* ---------- стопка ---------- */
 function renderStack() {
   const day = S.day, p = day.proposal, wls = p.worklogs, pending = wls.filter(w => w.status === "draft" || w.status === "changed");
-  $("#stackTotal").textContent = hmm(wls.reduce((s, w) => s + w.seconds, 0));
-  const nIss = new Set(wls.map(w => w.issue)).size;
-  $("#stackSub").textContent = !wls.length ? "Здесь соберутся ворклоги" : `${nIss} ${plural(nIss, "задача", "задачи", "задач")}`
-    + (wls.length > nIss ? ` · ${wls.length} ${plural(wls.length, "запись", "записи", "записей")}` : "");
+  // Сверились с Jira — справа то, что там реально лежит за день (внесённое и трекером, и руками в Tempo), а не только
+  // записи трекера: иначе «OMG-12 0:30» при трёх часах в Jira выглядит как ошибка. Записи трекера — только неотправленные.
+  const js = day.jira_day || {}, synced = day.jira_configured && js.target && ["closed", "partial", "empty"].includes(js.state);
+  const closed = synced && js.state === "closed";
+  const inJira = synced ? Object.entries(js.issues || {}).sort((a, b) => b[1] - a[1]) : [];
+  const shown = synced ? (closed ? [] : pending) : wls;
+  $("#stackH").textContent = closed ? "В Jira за день" : "Уйдёт в Jira";
+  $("#stackTotal").textContent = hmm(closed ? js.logged : shown.reduce((s, w) => s + w.seconds, 0));
+  const nIss = new Set(shown.map(w => w.issue)).size, nJ = inJira.length;
+  const cnt = (n, m) => `${n} ${plural(n, "задача", "задачи", "задач")}` + (m > n ? ` · ${m} ${plural(m, "запись", "записи", "записей")}` : "");
+  $("#stackSub").textContent = closed ? `${nJ} ${plural(nJ, "задача", "задачи", "задач")} · день закрыт`
+    : synced ? (shown.length ? cnt(nIss, shown.length) : "Подготовленного нет") + ` · в Jira уже ${hmm(js.logged)}`
+    : !wls.length ? "Здесь соберутся ворклоги" : cnt(nIss, wls.length);
   const ST = { pushed: ["в Jira", ""], in_jira: ["в Jira", ""], changed: ["изменено", "ch"] };
-  $("#wls").innerHTML = wls.length ? wls.map(w => { const st = ST[w.status];
+  const row = w => { const st = ST[w.status];
     return `<div class="wl" data-w="${esc(w.id)}" data-drop="${esc(w.issue)}" style="--p:${pastel(w.issue)}">
       <span class="k"><i></i><a href="${esc(day.base_url)}/browse/${esc(w.issue)}" target="_blank" rel="noopener">${esc(w.issue)}</a>${w.part ? `<span class="st pt" title="Отдельная запись в той же задаче: в Jira уйдёт своим ворклогом">отдельно</span>` : ""}${st ? `<span class="st ${st[1]}">${st[0]}</span>` : ""}</span>
       <span class="tv">${hmm(w.seconds)}</span>
       <button class="ed" title="Изменить время и комментарий" aria-label="Изменить ${esc(w.issue)}">${PEN}</button>
       <span class="sum" title="${esc(w.summary || "")}">${esc(w.summary || summary(w.issue))}</span>
       <div class="cmt ${w.comment ? "" : "none"}">${esc(w.comment || "без комментария")}</div>
-    </div>`; }).join("") : `<div class="sempty">${day.blocks.length ? "Примите подсказки слева, и задачи появятся здесь" : "Пока нечего отправлять"}</div>`;
-  $$("#wls .wl").forEach(el => $(".ed", el).onclick = () => editWorklog(el, wls.find(w => w.id === el.dataset.w)));
+    </div>`; };
+  // Строка «уже в Jira»: сколько за день в задаче всего. Если часть отправил трекер — его запись можно поправить.
+  const jrow = ([k, sec]) => { const mine = wls.find(w => w.issue === k && w.jira_id);
+    return `<div class="wl jr" ${mine ? `data-w="${esc(mine.id)}"` : ""} style="--p:${pastel(k)}">
+      <span class="k"><i></i><a href="${esc(day.base_url)}/browse/${esc(k)}" target="_blank" rel="noopener">${esc(k)}</a><span class="st">в Jira</span></span>
+      <span class="tv">${hmm(sec)}</span>
+      ${mine ? `<button class="ed" title="Изменить запись трекера" aria-label="Изменить ${esc(k)}">${PEN}</button>` : `<span></span>`}
+      <span class="sum" title="${esc(summary(k))}">${esc(summary(k))}</span>
+      ${mine?.comment ? `<div class="cmt">${esc(mine.comment)}</div>` : ""}
+    </div>`; };
+  $("#wls").innerHTML = shown.length || inJira.length
+    ? shown.map(row).join("") + (inJira.length && !closed ? `<div class="wlh">Уже в Jira · ${hmm(js.logged)}</div>` : "") + inJira.map(jrow).join("")
+    : `<div class="sempty">${day.blocks.length ? "Примите подсказки слева, и задачи появятся здесь" : "Пока нечего отправлять"}</div>`;
+  $$("#wls .wl").forEach(el => { const b = $(".ed", el); if (b) b.onclick = () => editWorklog(el, wls.find(w => w.id === el.dataset.w)); });
   const push = $("#push"), sec = pending.reduce((s, w) => s + w.seconds, 0);
   if (!day.jira_configured) { $("#pushLabel").textContent = "Подключить Jira"; push.disabled = false; push.dataset.mode = "connect"; }
   else { push.dataset.mode = "push"; push.disabled = !pending.length;
