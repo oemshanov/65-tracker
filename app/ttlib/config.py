@@ -15,6 +15,7 @@ DEFAULTS = {
         "idle_threshold_sec": 300,
         "browser_urls": True,
         "calendar": True,
+        "calendar_ignore": [],  # названия календарей, которые не считать (общий ресурс, чужой календарь)
         "ignore_bundles": [],
         "redact_title_patterns": [],
         "mic_ignore_bundles": [],

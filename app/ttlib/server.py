@@ -182,6 +182,15 @@ def web_build():
     return max((os.path.getmtime(os.path.join(WEB, f)) for f in os.listdir(WEB) if f.endswith(".html")), default=0)
 
 
+def calendars(conn, cfg):
+    """Календари за последний месяц: сколько событий и есть ли вы в них — чтобы выключить чужой (общий ресурс)."""
+    off = set(cfg["collector"].get("calendar_ignore") or [])
+    rows = conn.execute("SELECT calendar, COUNT(*), SUM(mine = 1), SUM(mine = 0) FROM calendar_events "
+                        "WHERE start > ? AND all_day = 0 AND calendar IS NOT NULL GROUP BY calendar ORDER BY COUNT(*) DESC",
+                        (time.time() - 31 * 86400,)).fetchall()
+    return [{"name": r[0], "events": r[1], "mine": r[2] or 0, "others": r[3] or 0, "on": r[0] not in off} for r in rows]
+
+
 PERM_FILE = os.path.join(config.SUPPORT_DIR, "permissions.json")
 
 
@@ -351,6 +360,7 @@ class Handler(BaseHTTPRequestHandler):
                     "update": dict(update.state(cfg, background=False), can_install=update.can_install()),
                     "storage": storage(conn),
                     "day_hours": cfg["worklog"].get("day_hours") or 0,
+                    "calendars": calendars(conn, cfg),
                 })
             if u.path == "/api/update/check":
                 c = update.check(cfg)
@@ -544,6 +554,10 @@ class Handler(BaseHTTPRequestHandler):
                 config.save_user(upd)
                 from .remind import install_agents
                 install_agents(config.load(), collector=False)
+                return self._json({"ok": True})
+            if path == "/api/settings/calendars":
+                off = [c for c in body.get("ignore") or [] if isinstance(c, str)]
+                config.save_user({"collector": {"calendar_ignore": off}})
                 return self._json({"ok": True})
             if path == "/api/settings/workday":
                 h = float(body.get("hours") or 0)

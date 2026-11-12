@@ -20,7 +20,8 @@ for d in (d_off, d_on):
     T = lambda h, m: time.mktime((d.year, d.month, d.day, h, m, 0, 0, 0, -1))  # noqa: E731
     conn.execute("DELETE FROM spans WHERE start >= ? AND start < ?", (T(0, 0), T(23, 0)))
     conn.execute("DELETE FROM calendar_events WHERE start >= ? AND start < ?", (T(0, 0), T(23, 0)))
-    conn.executemany("INSERT INTO calendar_events VALUES(?,?,?,?,?,?,?,?)", [
+    conn.executemany("INSERT INTO calendar_events(uid, start, end, title, calendar, location, all_day, attendees) "
+                     "VALUES(?,?,?,?,?,?,?,?)", [
         ("d%s" % d, T(10, 30), T(11, 0), "Омега - Дейлик", "w", None, 0, 5),
         ("s%s" % d, T(12, 30), T(13, 30), "Ревью макетов", "w", None, 0, 4),
         ("c%s" % d, T(14, 0), T(14, 20), "Кофе-брейк", "w", None, 0, 9),
@@ -31,6 +32,12 @@ conn.executemany("INSERT INTO spans(start,end,state,app,bundle,title) VALUES(?,?
     (T(10, 0), T(10, 30), "active", "Figma", "com.figma.Desktop", "Polka / Корзина"),
     (T(10, 30), T(14, 30), "idle", None, None, None),
     (T(14, 30), T(15, 0), "active", "Figma", "com.figma.Desktop", "Polka / Корзина")])
+# Не ваши события: бронь в общем календаре-ресурсе (выключен в настройках) и чужая встреча, где вас нет.
+conn.executemany("INSERT INTO calendar_events(uid, start, end, title, calendar, location, all_day, attendees, mine) "
+                 "VALUES(?,?,?,?,?,?,?,?,?)", [
+    ("r1", T(11, 0), T(12, 0), "Бронь переговорки", "Переговорка", None, 0, 0, None),
+    ("x1", T(13, 30), T(14, 0), "Чужой созвон", "w", None, 0, 3, 0)])
+cfg["collector"]["calendar_ignore"] = ["Переговорка"]
 conn.commit()
 
 off = build_day(conn, cfg, d_off)
@@ -46,4 +53,6 @@ labels = {b["label"]: b for b in on["blocks"]}
 assert "Омега - Дейлик" in labels and "Ревью макетов" in labels, "встречи внутри рабочего дня — засчитаны"
 assert labels["Кофе-брейк"]["skip"], "перерыв — личное"
 assert "Вечерний созвон" not in labels, "после выключения трекера календарь не добавляет"
+assert "Бронь переговорки" not in labels, "выключенный календарь не считается"
+assert "Чужой созвон" not in labels, "встреча, где вас нет среди участников, не ваша"
 print("OK")

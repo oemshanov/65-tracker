@@ -43,7 +43,8 @@ for minutes, state, (app, bundle), title, url, mic in plan:
             conn.execute("INSERT INTO spans(start,end,state,app,bundle,title,url,mic_app) VALUES(?,?,?,?,?,?,?,?)",
                          (t, t + 50, "active", TG[0], TG[1], "Рабочий чат", None, None))
             t += 50
-conn.execute("INSERT OR REPLACE INTO calendar_events VALUES(?,?,?,?,?,?,?,?)",
+conn.execute("INSERT OR REPLACE INTO calendar_events(uid, start, end, title, calendar, location, all_day, attendees) "
+             "VALUES(?,?,?,?,?,?,?,?)",
              ("ev1", time.mktime((date.year, date.month, date.day, 17, 30, 0, 0, 0, -1)),
               time.mktime((date.year, date.month, date.day, 18, 0, 0, 0, 0, -1)), "Синк по Банк Северу", "Работа", None, 0, 4))
 conn.executemany("INSERT OR REPLACE INTO issues(key, summary, project, project_name, status, updated) VALUES(?,?,?,?,?,?)", [

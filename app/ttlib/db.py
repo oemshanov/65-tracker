@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS spans(
 CREATE INDEX IF NOT EXISTS spans_start ON spans(start);
 CREATE TABLE IF NOT EXISTS calendar_events(
   uid TEXT NOT NULL, start REAL NOT NULL, end REAL NOT NULL, title TEXT, calendar TEXT,
-  location TEXT, all_day INTEGER, attendees INTEGER, PRIMARY KEY(uid, start));
+  location TEXT, all_day INTEGER, attendees INTEGER, mine INTEGER, PRIMARY KEY(uid, start));
 -- Выученные привязки «контекст → задача» (из таймлайна, Claude, CLI).
 CREATE TABLE IF NOT EXISTS mappings(
   context_key TEXT PRIMARY KEY, issue TEXT, category TEXT, label TEXT, updated REAL);
@@ -49,6 +49,10 @@ def connect():
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
     conn.executescript(SCHEMA)
+    try:  # mine у события: 1 — вы участник, 0 — участники есть, но не вы, NULL — участников нет
+        conn.execute("ALTER TABLE calendar_events ADD COLUMN mine INTEGER")
+    except sqlite3.OperationalError:
+        pass
     try:  # mine=0 — задача проекта, подтянутая не по вашему фильтру (для подсказок «встреч» проекта)
         conn.execute("ALTER TABLE issues ADD COLUMN mine INTEGER DEFAULT 1")
     except sqlite3.OperationalError:

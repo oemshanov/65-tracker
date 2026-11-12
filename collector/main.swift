@@ -77,6 +77,8 @@ final class DB {
           PRIMARY KEY(uid, start)
         )
         """)
+        // mine: 1 — вы организатор или участник, 0 — участники есть, но вас среди них нет, NULL — участников нет.
+        _ = sqlite3_exec(db, "ALTER TABLE calendar_events ADD COLUMN mine INTEGER", nil, nil, nil)  // уже есть — не ошибка
     }
 
     func exec(_ sql: String) {
@@ -245,10 +247,14 @@ final class CalendarSync {
         _ = db.run("DELETE FROM calendar_events WHERE start >= ? AND start < ?",
                    [from.timeIntervalSince1970, to.timeIntervalSince1970])
         for e in events {
-            _ = db.run("INSERT OR REPLACE INTO calendar_events VALUES(?,?,?,?,?,?,?,?)", [
+            // Чужие встречи в подписанном календаре (переговорка, общий ресурс) — не ваши: вас нет среди участников.
+            let people = (e.attendees ?? []) + (e.organizer.map { [$0] } ?? [])
+            let mine: Any? = people.isEmpty ? nil : (people.contains { $0.isCurrentUser } ? 1 : 0)
+            _ = db.run("INSERT OR REPLACE INTO calendar_events(uid, start, end, title, calendar, location, all_day, attendees, mine) "
+                       + "VALUES(?,?,?,?,?,?,?,?,?)", [
                 e.calendarItemExternalIdentifier ?? e.eventIdentifier ?? UUID().uuidString,
                 e.startDate.timeIntervalSince1970, e.endDate.timeIntervalSince1970,
-                e.title, e.calendar?.title, e.location, e.isAllDay ? 1 : 0, e.attendees?.count ?? 0,
+                e.title, e.calendar?.title, e.location, e.isAllDay ? 1 : 0, e.attendees?.count ?? 0, mine,
             ])
         }
         db.exec("COMMIT")

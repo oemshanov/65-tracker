@@ -66,8 +66,12 @@ def build_day(conn, cfg, date):
     personal = set(cfg.get("personal_bundles") or [])
     resolver = Resolver(conn, cfg)
 
+    # Не ваши события: из календарей, выключенных в настройках (общий ресурс, чужой календарь), и встречи,
+    # где есть участники, но вас среди них нет.
+    off = set(cfg["collector"].get("calendar_ignore") or [])
     events = [dict(r) for r in conn.execute(
-        "SELECT * FROM calendar_events WHERE start < ? AND end > ? AND all_day = 0 ORDER BY start", (t1, t0))]
+        "SELECT * FROM calendar_events WHERE start < ? AND end > ? AND all_day = 0 ORDER BY start", (t1, t0))
+        if r["calendar"] not in off and r["mine"] != 0]
 
     def event_at(ts):
         # Самое конкретное событие: короткий «Дейлик» важнее многочасового блока «omega» вокруг него.
