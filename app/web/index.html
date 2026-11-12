@@ -512,6 +512,11 @@ dialog.set h2 { font-size: 28px; margin: 0; }
 .jst.ok { background: var(--ok-bg); color: var(--ok); }
 .jst.wait { background: var(--well); color: var(--muted); }
 .jst .row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+.jopts { display: grid; gap: 6px; margin-top: 12px; }
+.jopt { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--well); cursor: pointer; font-size: 14px; min-width: 0; }
+.jopt input { accent-color: var(--blue); margin: 0; }
+.jopt b { font-weight: 600; white-space: nowrap; }
+.jopt span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cin { display: block; width: 100%; height: 38px; margin-top: 12px; padding: 0 12px; border: 0; border-radius: 10px; background: var(--well); color: var(--ink); font: 14px var(--text); }
 .dd .jd { width: 6px; height: 6px; border-radius: 50%; background: var(--warn); }
 .topup { margin-top: 12px; padding: 14px 14px 10px; border-radius: var(--r-l); background: var(--blue-soft); color: var(--blue-text); }
@@ -1119,6 +1124,15 @@ function renderStack() {
   const fd = (p.folded || []);
   $("#stackNote").innerHTML = fd.length ? `+ ${fd.map(f => `${esc(f.issue)} ${hmm(f.seconds)}`).join(", ")} — меньше ${Math.round(p.min_sec / 60)} мин, добавлено к задачам выше` : "";
   renderTopup(); renderJira();
+  // День не закрыт, а подготовленного нет — главная кнопка не должна говорить «Всё уже в Jira».
+  const jsd = day.jira_day || {};
+  if (day.jira_configured && jsd.state === "closed" && jsd.target) {
+    // День в Jira закрыт (часто — внесён руками в Tempo): отправка подготовленного дала бы дубль.
+    push.dataset.mode = "push"; push.disabled = true; $("#pushLabel").textContent = "День закрыт в Jira";
+  } else if (day.jira_configured && !pending.length && S.jsSort) {
+    push.disabled = true; $("#pushLabel").textContent = `Сначала разложите ${hmm(p.unassigned)}`;
+  } else if (day.jira_configured && !pending.length && S.jsRest >= 900 && S.jsCand?.length) {
+    push.dataset.mode = "add"; push.disabled = false; $("#pushLabel").textContent = `Добавить ${hmm(S.jsRest)} в Jira`; }
   $("#manualLabel").textContent = day.status === "manual" ? "Снять отметку «внесён»" : "Отметить день как внесённый";
   $("#manualSub").textContent = day.status === "manual" ? "Трекер снова будет напоминать о дне" : "Трекер перестанет о нём напоминать";
 }
@@ -1158,6 +1172,7 @@ function srcList(w) {
 // Залогирован ли день — по тому, что реально лежит в Jira. Не хватает — предлагаем отправить записи трекера.
 function renderJira() {
   const box = $("#jstate"), day = S.day, js = day.jira_day;
+  S.jsRest = 0; S.jsCand = []; S.jsSort = false;
   if (!box) return;
   if (!js || !day.jira_configured) { box.innerHTML = ""; return; }
   const p = day.proposal, pend = p.worklogs.filter(w => w.status === "draft" || w.status === "changed"), sec = pend.reduce((s, w) => s + w.seconds, 0);
@@ -1168,16 +1183,20 @@ function renderJira() {
   else if (js.state === "partial" || js.state === "empty") {
     // Сначала то, что трекер уже подготовил, потом — сколько останется и куда это добавить одной записью.
     const many = sec > js.missing + 900, rest = Math.round(Math.max(0, js.missing - sec) / 900) * 900;
+    // Одной записью добираем только остаток: день в основном уже в Jira или разбирать нечего. Иначе честнее
+    // разложить ожидающее — тогда трекер сам подготовит записи по задачам.
+    const sortFirst = p.unassigned >= 900 && js.logged + sec < js.target / 2;
     const cand = []; const addC = k => { if (k && !cand.includes(k)) cand.push(k); };
     Object.entries(js.issues || {}).sort((a, b) => b[1] - a[1]).forEach(([k]) => addC(k));
     p.worklogs.forEach(w => addC(w.issue));
     S.groups.forEach(g => addC(g.blocks.map(sugOf).find(Boolean)));
-    S.jsCand = cand.slice(0, 4); S.jsRest = rest;
+    S.jsCand = cand.slice(0, 4); S.jsRest = sortFirst ? 0 : rest; S.jsSort = sortFirst;
     box.innerHTML = `<div class="jst need"><b>В Jira ${hmm(js.logged)} из ${hmm(js.target)}</b> · не хватает ${hmm(js.missing)}
       ${pend.length ? `<small>Трекер подготовил ${hmm(sec)}: ${esc(pend.slice(0, 3).map(w => w.issue + " " + hmm(w.seconds)).join(", "))}${pend.length > 3 ? " и ещё " + (pend.length - 3) : ""}.`
         + (many && js.logged ? " Это больше, чем не хватает: часть, видимо, уже внесена руками — проверьте записи." : "") + `</small>` : ""}
       ${pend.length ? `<div class="row"><button class="pill sm dark" id="jsPush">Залогировать ${hmm(sec)}</button></div>` : ""}
-      ${rest >= 900 && S.jsCand.length ? `<small>${pend.length ? "Останется" : "Не хватает"} ${hmm(rest)} — добавить одной записью в задачу:</small>
+      ${sortFirst ? `<small>${hmm(p.unassigned)} ждут решения — разложите их по задачам слева, и трекер подготовит записи.</small>`
+        : rest >= 900 && S.jsCand.length ? `<small>${pend.length ? "Останется" : "Не хватает"} ${hmm(rest)} — добавить одной записью в задачу:</small>
         <div class="row">${S.jsCand.map((k, i) => `<button class="pill sm" data-jsadd="${i}" title="${esc(summary(k))}">${esc(k)} +${hmm(rest)}</button>`).join("")}</div>` : ""}
       <div class="row"><button class="txt sm" id="jsMark">Уже внесён</button></div></div>`;
     $("#jsPush")?.addEventListener("click", () => $("#push").click());
@@ -1186,10 +1205,12 @@ function renderJira() {
   } else box.innerHTML = "";
 }
 async function jiraAdd(issue, secs) {
-  const d = parseIso(S.day.date);
-  const ok = await ask(`<h2>Добавить в Jira ${hmm(secs)}?</h2><p><b>${esc(issue)}</b> ${esc(summary(issue))}<br>за ${d.getDate()} ${MON[d.getMonth()]}, отдельной записью.</p>
-    <input id="jaC" class="cin" placeholder="Комментарий для Jira (необязательно)">`, "Добавить");
+  const d = parseIso(S.day.date), pick = issue || S.jsCand[0];
+  const ok = await ask(`<h2>Добавить в Jira ${hmm(secs)}</h2><p>За ${d.getDate()} ${MON[d.getMonth()]} отдельной записью — в какую задачу?</p>
+    <div class="jopts">${S.jsCand.map(k => `<label class="jopt"><input type="radio" name="jaI" value="${esc(k)}" ${k === pick ? "checked" : ""}><b>${esc(k)}</b><span>${esc(summary(k))}</span></label>`).join("")}</div>
+    <input id="jaC" class="cin" placeholder="Комментарий для Jira (необязательно)">`, `Добавить ${hmm(secs)}`);
   if (!ok) return;
+  issue = $('input[name="jaI"]:checked')?.value || pick;
   const comment = ($("#jaC")?.value || "").trim();
   busy(null, async () => { setDay(await api("/api/jira/add", { issue, time: hmm(secs), comment })); toast(`Добавлено в ${issue}: ${hmm(secs)}`); });
 }
@@ -1306,6 +1327,7 @@ document.addEventListener("drop", async e => {
 /* ---------- кнопки ---------- */
 $("#push").onclick = async e => { const btn = e.currentTarget;
   if (btn.dataset.mode === "connect") return openConnect();
+  if (btn.dataset.mode === "add") return jiraAdd(null, S.jsRest);
   const p = S.day.proposal, todo = p.worklogs.filter(w => w.status === "draft" || w.status === "changed");
   if (!todo.length) { renderStack(); return toast("Всё подготовленное уже в Jira"); }
   if (!await ask(`<h2>Залогировать в Jira?</h2><div class="sendlist">${todo.map(w => `<span class="k" style="--p:${pastel(w.issue)}">${esc(w.issue)}</span><span class="c">${esc(w.comment)}</span><b class="num">${hmm(w.seconds)}</b>`).join("")}</div>
