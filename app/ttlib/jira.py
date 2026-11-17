@@ -11,6 +11,28 @@ import urllib.request
 KEYCHAIN_SERVICE = "tt-jira"
 
 
+_VIA = None  # прокси, через который Jira ответила в прошлый раз
+
+
+def _proxy_opener(p):
+    return urllib.request.build_opener(urllib.request.ProxyHandler({"http": p, "https": p}))
+
+
+def _local_proxies(cfg):
+    """Прокси из настроек (jira.proxy) или запущенный локальный прокси VPN-клиента."""
+    import socket
+    if (cfg.get("jira") or {}).get("proxy"):
+        return [cfg["jira"]["proxy"]]
+    out = []
+    for port in (7897, 7890):
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=0.3):
+                out.append("http://127.0.0.1:%d" % port)
+        except OSError:
+            pass
+    return out
+
+
 class JiraError(Exception):
     pass
 
@@ -41,6 +63,7 @@ def keychain_store(account, secret):
 class Jira:
     def __init__(self, cfg):
         j = cfg["jira"]
+        self.cfg = cfg
         self.base = j["base_url"].rstrip("/")
         self.user = j.get("username") or ""
         self.auth = j.get("auth", "pat")
@@ -73,7 +96,7 @@ class Jira:
         data = json.dumps(body).encode() if body is not None else None
         rq = urllib.request.Request(url, data=data, method=method, headers=self._headers())
         try:
-            with urllib.request.urlopen(rq, timeout=30) as r:
+            with self._open(rq) as r:
                 raw = r.read()
                 return json.loads(raw) if raw else None
         except urllib.error.HTTPError as e:
@@ -86,7 +109,35 @@ class Jira:
                 pass
             raise JiraError("HTTP %s %s: %s" % (e.code, path, msg))
         except urllib.error.URLError as e:
-            raise JiraError("Нет связи с %s (%s). VPN?" % (self.base, e.reason))
+            raise JiraError("Нет связи с Jira (%s): проверьте VPN и повторите" % urllib.parse.urlparse(self.base).hostname)
+
+    def _open(self, rq):
+        """Напрямую, а если соединение не прошло — через локальный прокси VPN-клиента. В терминале Jira часто
+        работает именно через него (Clash и подобные слушают 127.0.0.1:7897/7890), а напрямую в этот момент — нет."""
+        global _VIA
+        if _VIA:
+            try:
+                return _proxy_opener(_VIA).open(rq, timeout=30)
+            except urllib.error.HTTPError:
+                raise
+            except (urllib.error.URLError, OSError):
+                _VIA = None
+        try:
+            return urllib.request.urlopen(rq, timeout=30)
+        except urllib.error.HTTPError:
+            raise
+        except (urllib.error.URLError, OSError) as e:
+            for p in _local_proxies(self.cfg):
+                try:
+                    r = _proxy_opener(p).open(rq, timeout=30)
+                    _VIA = p
+                    return r
+                except urllib.error.HTTPError:
+                    _VIA = p
+                    raise
+                except (urllib.error.URLError, OSError):
+                    continue
+            raise e if isinstance(e, urllib.error.URLError) else urllib.error.URLError(e)
 
     def myself(self):
         if self._me is None:

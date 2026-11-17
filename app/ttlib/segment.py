@@ -13,7 +13,7 @@ import time
 from collections import defaultdict
 
 from . import claude_sessions
-from .context import Resolver, calendar_ctx, context_of
+from .context import MEET_DOMAINS, Resolver, calendar_ctx, context_of, domain_of
 from .hints import Hinter, meeting_issue, theme_tokens
 
 SKIP_CATEGORIES = {"personal"}
@@ -72,6 +72,9 @@ def build_day(conn, cfg, date):
     events = [dict(r) for r in conn.execute(
         "SELECT * FROM calendar_events WHERE start < ? AND end > ? AND all_day = 0 ORDER BY start", (t1, t0))
         if r["calendar"] not in off and r["mine"] != 0]
+    marks = {(r["uid"], r["start"]): r["mark"] for r in conn.execute(
+        "SELECT * FROM event_marks WHERE start < ? AND start >= ?", (t1, t0 - 86400))}
+    events = [e for e in events if marks.get((e["uid"], e["start"])) != "no"]  # «не было» — как будто и нет
 
     def event_at(ts):
         # Самое конкретное событие: короткий «Дейлик» важнее многочасового блока «omega» вокруг него.
@@ -100,11 +103,27 @@ def build_day(conn, cfg, date):
     # Были на встрече (звонок пересёкся с событием календаря) — засчитываем её целиком по календарю,
     # даже если микрофон выключали или параллельно печатали в других окнах: дейли 30 мин — это 30 мин.
     attended = []  # (начало, конец, контекст встречи)
+    seen = set()
     for a, b, ev, mic in calls:
         if ev:
             mctx = calendar_ctx(ev, project_keys)
             mctx.icon = mic
             attended.append((min(a, ev["start"]), max(b, ev["end"]), mctx))
+            seen.add((ev["uid"], ev["start"]))
+    # Онлайн-встреча (ссылка на Телемост, Zoom…) засчитывается, только если есть признак звонка: микрофон (выше),
+    # окно программы созвонов или вкладка с созвоном. Или вы сами отметили «была».
+    # Без признаков — не факт, а вопрос «был ли созвон?» в списке unconfirmed.
+    call_win = [(r["start"], r["end"]) for r in conn.execute(
+        "SELECT start, end, bundle, url FROM spans WHERE state='active' AND start < ? AND end > ?", (t1, t0))
+        if r["bundle"] in EVIDENCE_APPS or domain_of(r["url"] or "") in MEET_DOMAINS]
+    for ev in events:
+        k = (ev["uid"], ev["start"])
+        if k in seen or ev["end"] - ev["start"] > 4 * 3600:
+            continue
+        on_call = sum(max(0, min(b, ev["end"]) - max(a, ev["start"])) for a, b in call_win) >= 60
+        if marks.get(k) == "yes" or (ev["online"] and on_call):
+            attended.append((ev["start"], ev["end"], calendar_ctx(ev, project_keys)))
+            seen.add(k)
 
     def call_event(ts):
         for a, b, ev, _mic in calls:
@@ -217,6 +236,8 @@ def build_day(conn, cfg, date):
             ev = event_at(mid)
             if not ev or (ev["end"] - ev["start"]) > 4 * 3600:
                 continue
+            if ev["online"] and (ev["uid"], ev["start"]) not in seen:
+                continue  # онлайн-встреча без звонка — не засчитываем, спрашиваем
             ctx = calendar_ctx(ev, project_keys)
             res = resolver.resolve(ctx)
             ak = assignment_key(res, ctx)
@@ -332,7 +353,17 @@ def build_day(conn, cfg, date):
         "state_seconds": {k: int(v) for k, v in state_secs.items()},
         "events": [{"title": e["title"], "start": e["start"], "end": e["end"], "calendar": e["calendar"]}
                    for e in events],
+        "unconfirmed": [{"uid": e["uid"], "start": e["start"], "end": e["end"], "title": e["title"], "online": e["online"]}
+                        for e in events
+                        if e["online"] and (e["uid"], e["start"]) not in seen and e["end"] - e["start"] <= 4 * 3600
+                        and rec_first is not None and e["start"] < rec_last and e["end"] > rec_first
+                        and marks.get((e["uid"], e["start"])) is None],
     }
+
+
+# Программы созвонов: окно открыто во время встречи — признак, что созвон был (мессенджеры не считаем).
+EVIDENCE_APPS = {"us.zoom.xos", "com.microsoft.teams2", "com.microsoft.teams", "com.apple.FaceTime",
+                 "ru.yandex.telemost", "ru.yandex.desktop.telemost", "com.hnc.Discord"}
 
 
 def _state(b):

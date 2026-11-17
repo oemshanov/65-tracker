@@ -79,6 +79,8 @@ final class DB {
         """)
         // mine: 1 — вы организатор или участник, 0 — участники есть, но вас среди них нет, NULL — участников нет.
         _ = sqlite3_exec(db, "ALTER TABLE calendar_events ADD COLUMN mine INTEGER", nil, nil, nil)  // уже есть — не ошибка
+        // online: площадка созвона по ссылке в событии (Телемост, Zoom…), NULL — ссылки нет (очная встреча).
+        _ = sqlite3_exec(db, "ALTER TABLE calendar_events ADD COLUMN online TEXT", nil, nil, nil)
     }
 
     func exec(_ sql: String) {
@@ -222,6 +224,14 @@ func micApp(ignore: Set<String>) -> String? {
 
 // MARK: - Календарь
 
+/// Ссылки на площадки созвонов: по ним видно, что встреча онлайн и её можно проверить по звонку.
+let callLinks: [(String, String)] = [
+    ("telemost.yandex", "Телемост"), ("telemost.360.yandex", "Телемост"), ("zoom.us", "Zoom"),
+    ("meet.google.com", "Google Meet"), ("teams.microsoft.com", "Teams"), ("teams.live.com", "Teams"),
+    ("ktalk.ru", "Контур.Толк"), ("salutejazz.ru", "SaluteJazz"), ("jazz.sber.ru", "SaluteJazz"),
+    ("calls.vk.com", "VK Звонки"), ("meet.jit.si", "Jitsi"), ("webinar.ru", "Webinar"), ("webex.com", "Webex"),
+]
+
 final class CalendarSync {
     let store = EKEventStore()
     var granted = false
@@ -250,11 +260,14 @@ final class CalendarSync {
             // Чужие встречи в подписанном календаре (переговорка, общий ресурс) — не ваши: вас нет среди участников.
             let people = (e.attendees ?? []) + (e.organizer.map { [$0] } ?? [])
             let mine: Any? = people.isEmpty ? nil : (people.contains { $0.isCurrentUser } ? 1 : 0)
-            _ = db.run("INSERT OR REPLACE INTO calendar_events(uid, start, end, title, calendar, location, all_day, attendees, mine) "
-                       + "VALUES(?,?,?,?,?,?,?,?,?)", [
+            // Заметки читаем только ради ссылки на созвон и не сохраняем.
+            let text = [e.location, e.notes, e.url?.absoluteString].compactMap { $0 }.joined(separator: " ").lowercased()
+            let online: Any? = callLinks.first { text.contains($0.0) }?.1
+            _ = db.run("INSERT OR REPLACE INTO calendar_events(uid, start, end, title, calendar, location, all_day, attendees, mine, online) "
+                       + "VALUES(?,?,?,?,?,?,?,?,?,?)", [
                 e.calendarItemExternalIdentifier ?? e.eventIdentifier ?? UUID().uuidString,
                 e.startDate.timeIntervalSince1970, e.endDate.timeIntervalSince1970,
-                e.title, e.calendar?.title, e.location, e.isAllDay ? 1 : 0, e.attendees?.count ?? 0, mine,
+                e.title, e.calendar?.title, e.location, e.isAllDay ? 1 : 0, e.attendees?.count ?? 0, mine, online,
             ])
         }
         db.exec("COMMIT")

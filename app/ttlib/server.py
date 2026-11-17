@@ -555,6 +555,15 @@ class Handler(BaseHTTPRequestHandler):
                 from .remind import install_agents
                 install_agents(config.load(), collector=False)
                 return self._json({"ok": True})
+            if path == "/api/event_mark":
+                # Онлайн-встреча без признаков звонка: «была» — засчитать, «не было» — убрать вопрос.
+                mark = body.get("mark")
+                if mark in ("yes", "no"):
+                    conn.execute("INSERT OR REPLACE INTO event_marks VALUES(?,?,?)", (body["uid"], float(body["start"]), mark))
+                else:
+                    conn.execute("DELETE FROM event_marks WHERE uid=? AND start=?", (body["uid"], float(body["start"])))
+                conn.commit()
+                return self._json(day_payload(conn, cfg, date))
             if path == "/api/settings/calendars":
                 off = [c for c in body.get("ignore") or [] if isinstance(c, str)]
                 config.save_user({"collector": {"calendar_ignore": off}})

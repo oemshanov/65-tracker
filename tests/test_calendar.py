@@ -37,6 +37,9 @@ conn.executemany("INSERT INTO calendar_events(uid, start, end, title, calendar, 
                  "VALUES(?,?,?,?,?,?,?,?,?)", [
     ("r1", T(11, 0), T(12, 0), "Бронь переговорки", "Переговорка", None, 0, 0, None),
     ("x1", T(13, 30), T(14, 0), "Чужой созвон", "w", None, 0, 3, 0)])
+# Онлайн-встреча (ссылка на Телемост), а звонка не было: не засчитывается, а спрашивается.
+conn.execute("INSERT INTO calendar_events(uid, start, end, title, calendar, location, all_day, attendees, mine, online) "
+             "VALUES(?,?,?,?,?,?,?,?,?,?)", ("o1", T(12, 0), T(12, 30), "Онлайн-ревью", "w", None, 0, 3, 1, "Телемост"))
 cfg["collector"]["calendar_ignore"] = ["Переговорка"]
 conn.commit()
 
@@ -55,4 +58,10 @@ assert labels["Кофе-брейк"]["skip"], "перерыв — личное"
 assert "Вечерний созвон" not in labels, "после выключения трекера календарь не добавляет"
 assert "Бронь переговорки" not in labels, "выключенный календарь не считается"
 assert "Чужой созвон" not in labels, "встреча, где вас нет среди участников, не ваша"
+assert "Онлайн-ревью" not in labels, "онлайн-встреча без звонка не засчитывается"
+assert [u["title"] for u in on["unconfirmed"]] == ["Онлайн-ревью"], on["unconfirmed"]
+conn.execute("INSERT INTO event_marks VALUES(?,?,?)", ("o1", T(12, 0), "yes"))
+conn.commit()
+on2 = build_day(conn, cfg, d_on)
+assert "Онлайн-ревью" in {b["label"] for b in on2["blocks"]} and not on2["unconfirmed"], "«была» — засчитана"
 print("OK")
