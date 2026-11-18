@@ -13,7 +13,7 @@ import time
 from collections import defaultdict
 
 from . import claude_sessions
-from .context import MEET_DOMAINS, Resolver, calendar_ctx, context_of, domain_of
+from .context import MEET_DOMAINS, Resolver, calendar_ctx, context_of, domain_of, generic_call
 from .hints import Hinter, meeting_issue, theme_tokens
 
 SKIP_CATEGORIES = {"personal"}
@@ -369,6 +369,10 @@ EVIDENCE_APPS = {"us.zoom.xos", "com.microsoft.teams2", "com.microsoft.teams", "
                  "ru.yandex.telemost", "ru.yandex.desktop.telemost", "com.hnc.Discord"}
 
 
+# Подсказка по истории с такой уверенностью и выше — готовый ответ («Принять все»); ниже — лишь «возможно».
+SURE = 0.6
+
+
 def _state(b):
     return b["issue"] or ("skip" if b["skip"] else "split" if b.get("split") else None)
 
@@ -517,7 +521,11 @@ def _auto_split(blocks, limit):
             hinted.add(k)
     for b in blocks:
         k = b.get("theme") or b["context_key"] or b["id"]
-        if not _state(b) and k not in hinted and total[k] < limit:
+        # Переписка и созвон без события в календаре — часть работы над задачами дня, а какой именно, не понять:
+        # делим по задачам сами, решать тут нечего. Если по истории уверенно ясно, куда это, — не трогаем.
+        chatter = b.get("category") == "communication" or (b["kind"] == "meeting" and generic_call(b["context_key"] or ""))
+        sure = (b.get("hint") or {}).get("source") == "history" and (b["hint"].get("confidence") or 0) >= SURE
+        if not _state(b) and not sure and (chatter or (k not in hinted and total[k] < limit)):
             b["split"] = b["auto_split"] = True
 
 

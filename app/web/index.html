@@ -120,7 +120,7 @@ a { color: inherit; text-decoration: none; }
 .mix .t, .mixl .t { background: var(--ink); }
 .mix .w, .mixl .w { background: color-mix(in srgb, var(--warn) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 70%, transparent); }
 .mix .s, .mixl .s { background: var(--skip); }
-.mixl { display: grid; grid-template-columns: auto auto; justify-content: start; gap: 4px 14px; margin-top: 8px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mixl { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .mixl span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .mixl i { width: 8px; height: 8px; border-radius: 50%; }
 .day .wk { flex-direction: column; align-items: stretch; }
@@ -206,6 +206,13 @@ a { color: inherit; text-decoration: none; }
 .wcard { background: var(--well); border-radius: var(--r-l); padding: 16px 18px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px 16px; }
 .wcard .sugg { grid-column: 1 / -1; }
 /* Онлайн-встреча из календаря без признаков звонка — вопрос, а не факт. */
+.panel.quiet { padding: 14px 18px; }
+.qline { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+.qline svg { width: 16px; height: 16px; color: var(--ok); flex: none; }
+.qline span { flex: 1; }
+.wcard .maybe { flex: 1 0 100%; margin-top: -2px; padding: 4px 10px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; text-align: left; }
+.wcard .maybe:hover { background: var(--well-2); color: var(--ink); }
+.wcard .maybe b { font-weight: 600; color: var(--ink); }
 .ucard { background: var(--well); border-radius: var(--r-l); padding: 14px 16px 14px 18px; display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; }
 .ucard .ut { flex: 1; min-width: 0; }
 .ucard .ut b { display: block; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -537,7 +544,9 @@ dialog.set h2 { font-size: 28px; margin: 0; }
 .topup .opt b { flex: none; font-weight: 600; font-size: 12px; }
 .topup .opt .s { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
 .topup .opt .v { flex: none; font-weight: 600; font-variant-numeric: tabular-nums; }
-.topup .no { margin-top: 6px; border: 0; background: none; color: inherit; opacity: .75; font-size: 12px; padding: 4px 2px; cursor: pointer; }
+.topup .tadd { background: var(--card); color: var(--ink); }
+.topup .trow { display: flex; align-items: center; gap: 4px 12px; flex-wrap: wrap; margin-top: 10px; }
+.topup .no { margin-top: 0; border: 0; background: none; color: inherit; opacity: .75; font-size: 12px; padding: 4px 2px; cursor: pointer; }
 .topup .no:hover { opacity: 1; text-decoration: underline; }
 #wdSeg { flex: none; } #wdSeg button { white-space: nowrap; }
 .sendrow .send { margin-top: 0; flex: 1; }
@@ -552,7 +561,7 @@ html.native .layout { margin-top: 0; }
 .lcol > .ribbon { margin-bottom: 0; }
 .toprow { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 14px; }
 .toprow .stats { padding: 16px 20px; }
-/* Как приложение, а не веб-страница: окно не прокручивается. Левая колонка (дата, лента, «Ждут решения», «Разложено»)
+/* Как приложение, а не веб-страница: окно не прокручивается. Левая колонка (дата, лента, «Не разобрано», «Разложено»)
    прокручивается целиком, блоки в ней — в полную высоту, без своих прокруток; справа «Уйдёт в Jira» стоит на месте.
    На узком или низком окне — обычная прокрутка страницы. */
 @media (min-width: 1100px) and (min-height: 640px) {
@@ -579,6 +588,7 @@ html.native .layout { margin-top: 0; }
   .col > .panel { min-height: 0; display: flex; flex-direction: column; padding: 18px 20px; }
   .col > .panel > .ph { flex: none; margin-bottom: 12px; }
   .col:not(:has(.wp)) { grid-template-rows: 1fr; }
+  .col:has(.quiet) { grid-template-rows: auto 1fr; }
   .allclear { padding: 12px 16px; text-align: left; }
   .stack { position: static; min-height: 0; display: flex; flex-direction: column; padding: 18px 20px; }
   .stack > * { flex: none; }
@@ -646,8 +656,8 @@ html.native .wrap { padding-top: 56px; }
     </div>
     <div class="rcol">
 
-      <aside class="stack" aria-label="Уйдёт в Jira">
-      <div class="ph"><img class="jira" id="jiraIco" alt="" src="/api/icon?jira=1" onerror="this.style.display='none'"><h2 id="stackH">Уйдёт в Jira</h2></div>
+      <aside class="stack" aria-label="К отправке">
+      <div class="ph"><img class="jira" id="jiraIco" alt="" src="/api/icon?jira=1" onerror="this.style.display='none'"><h2 id="stackH">К отправке</h2></div>
       <div class="big" id="stackTotal">0:00</div>
       <div class="bigsub" id="stackSub"></div>
       <div id="jstate"></div>
@@ -822,7 +832,7 @@ function renderHero() {
     $("#stats").innerHTML = `<div class="sum1"><div class="srow"><span class="l">За день</span><span class="span">${clock(b0.start)} – ${isToday ? "сейчас" : clock(b1.end)}</span></div>
       <div class="v">${hmm(p.total)}</div>
       <div class="mix"><i class="t" style="width:${pc(sum.t)}"></i><i class="w" style="width:${pc(sum.w)}"></i><i class="s" style="width:${pc(sum.s)}"></i></div>
-      <div class="mixl"><span><i class="t"></i>задачи ${hmm(sum.t)}</span>${sum.w >= 60 ? `<span><i class="w"></i>ждут ${hmm(sum.w)}</span>` : ""}${sum.s >= 60 ? `<span><i class="s"></i>личное ${hmm(sum.s)}</span>` : ""}</div></div>`;
+      <div class="mixl"><span><i class="t"></i>задачи ${hmm(sum.t)}</span>${sum.w >= 60 ? `<span><i class="w"></i>не разобрано ${hmm(sum.w)}</span>` : ""}${sum.s >= 60 ? `<span><i class="s"></i>личное ${hmm(sum.s)}</span>` : ""}</div></div>`;
   }
   $("#today").style.display = isToday ? "none" : ""; $("#next").disabled = isToday; $("#next").style.opacity = isToday ? .35 : 1;
   $("#jiraBanner").style.display = day.jira_configured ? "none" : "";
@@ -929,9 +939,12 @@ function groupBlocks(bl) {
       open: open.length > 0, openSeconds: open.reduce((s, b) => s + b.seconds, 0) };
   }).sort((a, b) => (b.open - a.open) || (b.seconds - a.seconds));
 }
+// Подсказка «уверенная» (по истории в Jira с высокой уверенностью) — готовый ответ; остальные — только «возможно»,
+// чтобы не приходилось проверять каждую догадку.
+const sureHint = h => h && h.source === "history" && (h.confidence || 0) >= 0.6;
 function proposal(g) {
   if (g.suggestion) return { issue: g.suggestion.issue, why: (g.suggestion.reason || "").replace(/^локально: /, "по смыслу: "), ai: true };
-  if (g.hint && !g.hint.here) return { issue: g.hint.issue, why: g.hint.reason };
+  if (g.hint && !g.hint.here) return { issue: g.hint.issue, why: g.hint.reason, sure: sureHint(g.hint) };
   if (g.hint) { const blocks = g.blocks.filter(b => !b.issue && b.hint && b.hint.here && b.hint.issue === g.hint.issue); return { issue: g.hint.issue, why: g.hint.reason, blocks }; }
   return null;
 }
@@ -939,6 +952,8 @@ function groupOf(key) { return (S.groups || []).find(g => g.key === key); }
 const shortWhy = w => (w || "").replace(/«(?:Claude Code: )?([^»—]+?)(?: — [^»]*)?»/g, "«$1»");
 
 /* ---------- левая колонка ---------- */
+// День закрыт в Jira (или отмечен «внесён») — разбирать нечего: экран не просит действий.
+function dayClosed() { const js = S.day.jira_day || {}; return S.day.status === "manual" || js.state === "marked" || (js.state === "closed" && js.target > 0); }
 function renderLeft() {
   const box = $("#left"), day = S.day;
   if (!day.blocks.length) {
@@ -950,22 +965,26 @@ function renderLeft() {
         <li><b>Отправляет</b><span>вечером проверьте стопку справа и нажмите «Залогировать»</span></li></ol></section>`
       : `<section class="panel"><div class="allclear">${day.tracked ? "В этот день активности не было" : "Трекер в этот день не работал"}</div></section>`;
     return; }
-  const open = S.groups.filter(g => g.open), props = open.filter(proposal), noSug = open.length - props.length;
-  let h = !open.length ? "" : `<section class="panel wp"><div class="ph"><h2>Ждут решения</h2>${open.length ? `<span class="count">${open.length} · ${hmm(open.reduce((s, g) => s + g.openSeconds, 0))}</span>` : ""}<span class="sp"></span>
+  const open = S.groups.filter(g => g.open), props = open.filter(g => proposal(g)?.sure), noSug = open.filter(g => !proposal(g)).length;
+  let h = !open.length ? "" : `<section class="panel wp"><div class="ph"><h2>Не разобрано</h2>${open.length ? `<span class="count">${open.length} · ${hmm(open.reduce((s, g) => s + g.openSeconds, 0))}</span>` : ""}<span class="sp"></span>
     ${noSug ? `<button class="pill sm ai" id="local" title="Нейросеть на этом Маке сравнит по смыслу активности без подсказки с вашими недавними задачами и прошлыми днями. Без интернета; после подбора сразу закрывается">${SPARK}Подобрать задачу для ${noSug} ${plural(noSug, "активности", "активностей", "активностей")}</button>` : ""}
     ${props.length ? `<button class="pill sm dark" id="acceptAll">Принять ${props.length} ${plural(props.length, "подсказку", "подсказки", "подсказок")}</button>` : ""}</div>`;
   if (open.length) h += `<div class="waits">${open.map(waitCard).join("")}</div></section>`;
   // Онлайн-встречи из календаря, во время которых звонка не было видно: не засчитаны, спрашиваем.
-  const unc = day.unconfirmed || [];
+  const unc = dayClosed() ? [] : (day.unconfirmed || []);
+  // Закрытый день: вместо списка «не разобрано» — одна тихая строка; показать можно, но не нужно.
+  if (dayClosed() && open.length && S.showOpen !== day.date)
+    h = `<section class="panel quiet"><div class="qline">${CHECK}<span>День закрыт в Jira. Не разобрано ${hmm(open.reduce((s, g) => s + g.openSeconds, 0))} — для закрытого дня это не нужно.</span><button class="txt sm" id="showOpen">Показать</button></div></section>`;
   if (unc.length) h = `<section class="panel wp"><div class="ph"><h2>Был ли созвон?</h2><span class="count">${unc.length}</span></div>
     <div class="waits">${unc.map((e, i) => `<div class="ucard"><div class="ut"><b>${esc(e.title || "Встреча")}</b>
       <span>${clock(e.start)}–${clock(e.end)} · ${esc(e.online)} · в календаре есть, но звонка в это время не было видно — поэтому не засчитано</span></div>
       <div class="ub"><button class="pill sm dark" data-uyes="${i}">Был — засчитать</button><button class="txt sm" data-uno="${i}">Не было</button></div></div>`).join("")}</div></section>` + h;
-  h += `<section class="panel"><div class="ph"><h2>Разложено</h2><span class="sp"></span><div class="seg"><button data-view="groups">По задачам</button><button data-view="chrono">По времени</button></div></div>
+  h += `<section class="panel"><div class="ph"><h2>Разобрано</h2><span class="sp"></span><div class="seg"><button data-view="groups">По задачам</button><button data-view="chrono">По времени</button></div></div>
     <div id="done"></div></section>`;
   box.innerHTML = h;
   const mark = (e, m) => busy(null, async () => setDay(await api("/api/event_mark", { uid: e.uid, start: e.start, mark: m })));
   $$("[data-uyes]", box).forEach(b => b.onclick = () => mark(unc[+b.dataset.uyes], "yes"));
+  $("#showOpen", box)?.addEventListener("click", () => { S.showOpen = day.date; renderLeft(); });
   $$("[data-uno]", box).forEach(b => b.onclick = () => mark(unc[+b.dataset.uno], "no"));
   bindWaits();
   $$(".seg button[data-view]").forEach(b => { b.classList.toggle("on", b.dataset.view === S.view); b.onclick = () => { S.view = b.dataset.view; store.set("tt-view", S.view); renderLeft(); }; });
@@ -979,14 +998,15 @@ function waitCard(g) {
   const also = [...new Set(g.others.filter(o => o.seconds >= 60).map(o => o.label.replace(/ — .*$/, "")))];
   const meta = [also.length ? "вместе с " + also.join(", ") : "", n.length > 1 ? `${n.length} ${plural(n.length, "раз", "раза", "раз")} за день` : ""].filter(Boolean).join(" · ");
   return `<div class="wcard ${S.sel === g.key ? "sel" : ""}" data-k="${esc(g.key)}">
-    <div class="wtop" draggable="true" title="Потяните на задачу в «Разложено» или в «Уйдёт в Jira»">${icon(g.icon, g.label)}<div class="t"><div class="name">${esc(g.label.replace(/^Claude Code: /, ""))}</div>
+    <div class="wtop" draggable="true" title="Потяните на задачу в «Разобрано» или в «К отправке»">${icon(g.icon, g.label)}<div class="t"><div class="name">${esc(g.label.replace(/^Claude Code: /, ""))}</div>
       ${meta ? `<div class="meta">${esc(meta)}</div>` : ""}</div></div>
     <div class="dur">${hmm(g.openSeconds)}</div>
-    <div class="sugg">${pr ? `<button class="chip" data-act="change" style="--p:${pastel(pr.issue)}" title="${pr.ai ? "Подсказала нейросеть" : "Подсказка"}: ${esc(why)}. Нажмите, чтобы выбрать другую задачу">${pr.ai ? `<i class="spark">${SPARK}</i>` : ""}<b>${esc(pr.issue)}</b><span>${esc(summary(pr.issue))}</span><i class="cv">${CHEV}</i></button>
-      <button class="yes" data-act="hint">${CHECK}Да, сюда</button>` : `<input list="issueList" class="solo" placeholder="Найти задачу в Jira" spellcheck="false">`}
+    <div class="sugg">${pr && pr.sure ? `<button class="chip" data-act="change" style="--p:${pastel(pr.issue)}" title="${pr.ai ? "Подсказала нейросеть" : "Подсказка"}: ${esc(why)}. Нажмите, чтобы выбрать другую задачу">${pr.ai ? `<i class="spark">${SPARK}</i>` : ""}<b>${esc(pr.issue)}</b><span>${esc(summary(pr.issue))}</span><i class="cv">${CHEV}</i></button>
+      <button class="yes" data-act="hint">${CHECK}Да, сюда</button>` : `<input list="issueList" class="solo" placeholder="Выберите задачу" spellcheck="false">`}
       <span class="mw"><button class="more" data-act="more" title="Не задача" aria-label="Не задача">${DOTS}</button>
         <div class="menu wm"><button class="mi" data-act="split"><i><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v5M10 8l-5 5v4M10 8l5 5v4"/></svg></i><span>Разделить между задачами<small>Для переписки и почты — пропорционально</small></span></button>
-          <button class="mi" data-act="skip"><i><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7" r="3"/><path d="M4.5 17a5.5 5.5 0 0 1 11 0"/></svg></i><span>Отметить как личное<small>Не уходит в Jira</small></span></button></div></span></div>
+          <button class="mi" data-act="skip"><i><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7" r="3"/><path d="M4.5 17a5.5 5.5 0 0 1 11 0"/></svg></i><span>Отметить как личное<small>Не уходит в Jira</small></span></button></div></span>
+      ${pr && !pr.sure ? `<button class="maybe" data-act="hint" title="${esc(shortWhy(pr.why))}">возможно: <b>${esc(pr.issue)}</b> ${esc(summary(pr.issue))}</button>` : ""}</div>
   </div>`;
 }
 
@@ -1017,7 +1037,7 @@ function bindWaits() {
     el.onclick = e => { if (!e.target.closest("input,button,label")) select(g.key); };
   });
   $("#acceptAll")?.addEventListener("click", e => busy(e.currentTarget, async () => {
-    const props = S.groups.filter(g => g.open && proposal(g)); let d = null;
+    const props = S.groups.filter(g => g.open && proposal(g)?.sure); let d = null;
     for (const g of props) d = await accept(g, proposal(g), true);
     setDay(d); toast(`Принято подсказок: ${props.length}`); }, "Принимаю…"));
   $("#local")?.addEventListener("click", async e => { const b = e.currentTarget; if (!await aiReady()) return; busy(b, async () => { const r = await api("/api/local_suggest", {}); setDay(r.day);
@@ -1038,14 +1058,14 @@ function renderDone(box) {
   const tasks = [...by.values()].sort((a, b) => (a.key[0] === "~") - (b.key[0] === "~") || b.seconds - a.seconds);
   if (!tasks.length) { box.innerHTML = `<div class="allclear">Пока ничего не разложено</div>`; return; }
   const cards = tasks.map(t => {
-    const sys = t.key[0] === "~", name = t.key === "~skip" ? "Личное, не логируется" : t.key === "~split" ? "Делится между задачами" : summary(t.key);
+    const sys = t.key[0] === "~", name = t.key === "~skip" ? "Личное" : t.key === "~split" ? "Делится по задачам" : summary(t.key);
     const P = S.day.proposal, fold = (P.folded || []).find(f => f.issue === t.key), wls = P.worklogs.filter(w => w.issue === t.key),
       wl = wls.length ? { seconds: wls.reduce((x, w) => x + w.seconds, 0), edited: wls.some(w => w.edited), status: wls.every(w => w.status === "pushed" || w.status === "in_jira") ? "pushed" : "draft" } : null;
     const autoN = t.key === "~split" ? [...t.acts.values()].filter(a => a.g.blocks.some(b => b.auto_split)).length : 0;
-    const note = t.key === "~skip" ? `<div class="tnote">Не уходит в Jira. Чтобы записать в задачу, откройте список и нажмите на активность</div>` : t.key === "~split" ? `<div class="tnote">${autoN ? "Мелочь без задачи короче 15 минут делится между задачами сама. " : ""}Чтобы записать активность в конкретную задачу, откройте список и нажмите на неё</div>`
+    const note = t.key === "~skip" ? `<div class="tnote" title="Чтобы записать в задачу, откройте список и нажмите на активность">в Jira не уходит ⓘ</div>` : t.key === "~split" ? `<div class="tnote" title="Мелочь, переписка и созвоны без события в календаре делятся по задачам дня пропорционально их времени. Чтобы записать активность в конкретную задачу, откройте список и нажмите на неё">мелочь и переписка — пропорционально по задачам дня ⓘ</div>`
       : sys ? "" : fold ? `<div class="tnote">Меньше ${Math.round(P.min_sec / 60)} мин — отдельно не логируется, время добавлено ${fold.into ? `к ${esc(fold.into)}` : "к другим задачам дня"}</div>`
-      : wl && Math.abs(wl.seconds - t.seconds) >= 60 ? `<div class="tnote">${wl.status === "pushed" || wl.status === "in_jira" ? `В Jira залогировано ${hmm(wl.seconds)}`
-        : wl.edited ? `В Jira уйдёт ${hmm(wl.seconds)}: вы поправили время` : `В Jira уйдёт ${hmm(wl.seconds)}: округлено до 15 мин`}</div>` : "";
+      : wl && !dayClosed() && wl.status !== "pushed" && wl.status !== "in_jira" && Math.abs(wl.seconds - t.seconds) >= 1800
+        ? `<div class="tnote">к отправке ${hmm(wl.seconds)} — ${wl.edited ? "вы поправили" : "с мелочью и перепиской дня"}</div>` : "";
     return `<div class="tcard ${sys ? "gray" : ""}" data-drop="${esc(t.key)}" style="${sys ? "" : `--p:${pastel(t.key)}`}">
       <div class="thead" data-open>${sys ? "" : `<span class="k">${esc(t.key)}</span>`}<span class="s">${esc(name)}</span><span class="v">${hmm(t.seconds)}</span></div>${note}
       <div class="tfoot"><span class="ticons">${[...t.acts.values()].sort((a, b) => b.seconds - a.seconds).slice(0, 6).map(a => icon(a.icon, a.label)).join("")}</span>
@@ -1069,13 +1089,13 @@ function actOf(el) {
   const g = (S.groups || []).find(g => g.members.has(el.dataset.ta)), mb = g.members.get(el.dataset.ta), tk = el.dataset.t;
   return { mb, tk, blocks: mb.blocks.filter(b => (b.issue || (b.skip ? "~skip" : b.split ? "~split" : "")) === tk) };
 }
-// Снимаем привязку (и запомненное правило), затем локальная нейросеть ищет задачу — подсказка появится в «Ждут решения».
+// Снимаем привязку (и запомненное правило), затем локальная нейросеть ищет задачу — подсказка появится в «Не разобрано».
 async function aiPick(btn, mb, blocks) {
   if (!await aiReady()) return;
   return busy(btn, async () => {
     await api("/api/assign", { issue: null, remember: true, context_key: mb.key, label: mb.label, intervals: blocks.map(b => [b.start, b.end]) });
     const r = await api("/api/local_suggest", {}); setDay(r.day);
-    toast(r.result.saved ? "Есть подсказка — проверьте в «Ждут решения»" : "Подходящей задачи не нашлось — активность ждёт решения, выберите задачу сами");
+    toast(r.result.saved ? "Есть подсказка — проверьте в «Не разобрано»" : "Подходящей задачи не нашлось — активность ждёт решения, выберите задачу сами");
   }, "Подбираю…");
 }
 // Закрыть правку активности — убрать форму, строка снова обычная (карточка остаётся раскрытой).
@@ -1136,12 +1156,12 @@ function renderStack() {
   const closed = synced && js.state === "closed";
   const inJira = synced ? Object.entries(js.issues || {}).sort((a, b) => b[1] - a[1]) : [];
   const shown = synced ? (closed ? [] : pending) : wls;
-  $("#stackH").textContent = closed ? "В Jira за день" : "Уйдёт в Jira";
+  $("#stackH").textContent = closed ? "В Jira за день" : "К отправке";
   $("#stackTotal").textContent = hmm(closed ? js.logged : shown.reduce((s, w) => s + w.seconds, 0));
   const nIss = new Set(shown.map(w => w.issue)).size, nJ = inJira.length;
   const cnt = (n, m) => `${n} ${plural(n, "задача", "задачи", "задач")}` + (m > n ? ` · ${m} ${plural(m, "запись", "записи", "записей")}` : "");
   $("#stackSub").textContent = closed ? `${nJ} ${plural(nJ, "задача", "задачи", "задач")} · день закрыт`
-    : synced ? (shown.length ? cnt(nIss, shown.length) : "Подготовленного нет") + (js.logged ? ` · в Jira уже ${hmm(js.logged)} из ${hmm(js.target)}` : " · в Jira за день пока пусто")
+    : synced ? (shown.length ? cnt(nIss, shown.length) : "Нечего отправлять") + (js.logged ? ` · в Jira уже ${hmm(js.logged)} из ${hmm(js.target)}` : " · в Jira за день пока пусто")
     : !wls.length ? "Здесь соберутся ворклоги" : cnt(nIss, wls.length);
   const ST = { pushed: ["в Jira", ""], in_jira: ["в Jira", ""], changed: ["изменено", "ch"] };
   const row = w => { const st = ST[w.status];
@@ -1169,7 +1189,7 @@ function renderStack() {
   if (!day.jira_configured) { $("#pushLabel").textContent = "Подключить Jira"; push.disabled = false; push.dataset.mode = "connect"; }
   else { push.dataset.mode = "push"; push.disabled = !pending.length;
     $("#pushLabel").textContent = pending.length ? `Залогировать · ${hmm(sec)}` : wls.length ? "Всё уже в Jira" : "Залогировать"; }
-  $("#stackNote").innerHTML = p.unassigned >= 60 ? `<b>${dur(p.unassigned)}</b> ждут решения и не уйдут` : "";
+  $("#stackNote").innerHTML = p.unassigned >= 60 ? `<b>${dur(p.unassigned)}</b> не разобрано — в Jira не уйдёт` : "";
   const fd = (p.folded || []);
   $("#stackNote").innerHTML = fd.length ? `+ ${fd.map(f => `${esc(f.issue)} ${hmm(f.seconds)}`).join(", ")} — меньше ${Math.round(p.min_sec / 60)} мин, добавлено к задачам выше` : "";
   renderTopup(); renderJira();
@@ -1179,7 +1199,7 @@ function renderStack() {
     // День в Jira закрыт (часто — внесён руками в Tempo): отправка подготовленного дала бы дубль.
     push.dataset.mode = "push"; push.disabled = true; $("#pushLabel").textContent = "День закрыт в Jira";
   } else if (day.jira_configured && !pending.length && S.jsSort) {
-    push.disabled = true; $("#pushLabel").textContent = `Сначала разложите ${hmm(p.unassigned)}`;
+    push.dataset.mode = "sort"; push.disabled = false; $("#pushLabel").textContent = `Разобрать ${hmm(p.unassigned)}`;
   } else if (day.jira_configured && !pending.length && S.jsRest >= 900 && S.jsCand?.length) {
     push.dataset.mode = "add"; push.disabled = false; $("#pushLabel").textContent = `Добавить ${hmm(S.jsRest)} в Jira`; }
   $("#manualLabel").textContent = day.status === "manual" ? "Снять отметку «внесён»" : "Отметить день как внесённый";
@@ -1196,7 +1216,7 @@ function srcList(w) {
   const own = s => S.day.blocks.filter(b => b.issue === w.issue && s.keys.includes(b.context_key || b.id)).reduce((x, b) => x + b.seconds, 0) >= s.seconds / 2;
   const row = (s, i) => {
     const act = w.jira_id || w.part ? "" : i > 0 ? `<button data-s="${i}" data-to="${esc(s.key)}" title="Отдельный ворклог в ${esc(w.issue)}: своё время и свой комментарий">Отдельно</button>` : "";
-    const rm = !w.jira_id && own(s) ? `<button class="rm" data-s="${i}" title="Убрать из задачи — вернётся в «Ждут решения»" aria-label="Убрать">✕</button>` : "";
+    const rm = !w.jira_id && own(s) ? `<button class="rm" data-s="${i}" title="Убрать из задачи — вернётся в «Не разобрано»" aria-label="Убрать">✕</button>` : "";
     return `<div class="src">${icon(s.icon, s.label)}<span class="n" title="${esc(s.label)}">${esc(s.label.replace(/^Claude Code: /, ""))}</span><span class="d">${hmm(s.seconds)}</span>${act}${rm}</div>`; };
   // Не «доля общего времени», а что именно добавилось: названия окон и задач, и почему. Пара минут — шум, не показываем.
   const names = (list, n = 3) => list.slice(0, n).join(", ") + (list.length > n ? ` и ещё ${list.length - n}` : "");
@@ -1241,7 +1261,7 @@ function renderJira() {
     S.jsCand = cand.slice(0, 4); S.jsRest = sortFirst ? 0 : rest; S.jsSort = sortFirst;
     const have = js.logged ? `В Jira за этот день уже ${hmm(js.logged)} из ${hmm(js.target)}.` : "В Jira за этот день пока пусто.";
     box.innerHTML = sortFirst
-      ? `<div class="jst need"><b>Сначала разложите ${hmm(p.unassigned)} в «Ждут решения»</b><small>${have} Когда разложите, трекер сам подготовит записи по задачам.</small></div>`
+      ? `<div class="jst need"><b>Не разобрано ${hmm(p.unassigned)}</b><small>${have} Разберите слева — трекер сам подготовит записи по задачам.</small></div>`
       : many && js.logged
           ? `<div class="jst need"><b>Проверьте записи</b><small>${have} Трекер подготовил ${hmm(sec)} — больше, чем не хватает: похоже, часть уже внесена руками.</small></div>`
           : "";
@@ -1277,16 +1297,17 @@ function renderTopup() {
     return add.map(n => n * 900); };
   const byJira = jsd.state === "partial" || jsd.state === "empty";
   box.innerHTML = `<div class="topup"><div class="tt"><b>До нормы ${(byJira ? jsd.target : norm) === norm ? norm / 3600 + " ч" : hmm(jsd.target)} не хватает ${hmm(gap)}</b>
-      <span>Трекер не видит созвоны без компьютера, обсуждения и раздумья. Добавить это время к задаче?</span></div>
-    <div class="opts">${ws.map((w, i) => `<button class="opt" data-i="${i}" style="--p:${pastel(w.issue)}"><i></i><b>${esc(w.issue)}</b><span class="s">${esc(w.summary || "")}</span><span class="v">${hmm(w.seconds)} → ${hmm(w.seconds + gap)}</span></button>`).join("")}
-      ${ws.length > 1 ? `<button class="opt" data-all><i></i><span class="s" style="color:inherit">По всем пропорционально</span><span class="v">+${hmm(gap)}</span></button>` : ""}</div>
-    <button class="no">Не нужно за этот день</button></div>`;
+      <span>Созвоны без компьютера, обсуждения и раздумья трекер не видит.</span></div>
+    <div class="trow">${ws.length > 1 ? `<button class="pill sm tadd" data-all>Распределить по задачам +${hmm(gap)}</button>` : `<button class="pill sm tadd" data-i="0">Добавить к ${esc(ws[0].issue)} +${hmm(gap)}</button>`}
+      ${ws.length > 1 ? `<button class="no" data-pick>к одной задаче</button>` : ""}<button class="no" data-skip>не нужно</button></div>
+    ${S.topupPick === day.date ? `<div class="opts">${ws.map((w, i) => `<button class="opt" data-i="${i}" style="--p:${pastel(w.issue)}"><i></i><b>${esc(w.issue)}</b><span class="s">${esc(w.summary || "")}</span><span class="v">${hmm(w.seconds)} → ${hmm(w.seconds + gap)}</span></button>`).join("")}</div>` : ""}</div>`;
   const add = (pairs, what) => busy(null, async () => { let d = null;
     for (const [w, sec] of pairs) if (sec) d = await api("/api/draft", { issue: w.issue, part: w.part, time: hmm(w.seconds + sec) });
     if (d) setDay(d); toast(`Добавил ${hmm(gap)} ${what}. Вернуть — в карточке задачи, «вернуть авто»`); });
-  $$(".opt[data-i]", box).forEach(b => b.onclick = () => { const w = ws[+b.dataset.i]; add([[w, gap]], "к " + w.issue); });
-  $(".opt[data-all]", box)?.addEventListener("click", () => { const a = prop(); add(ws.map((w, i) => [w, a[i]]), "по задачам дня"); });
-  $(".no", box).onclick = () => { try { localStorage.setItem(key, "no"); } catch (e) {} box.innerHTML = ""; };
+  $$("[data-i]", box).forEach(b => b.onclick = () => { const w = ws[+b.dataset.i]; add([[w, gap]], "к " + w.issue); });
+  $("[data-all]", box)?.addEventListener("click", () => { const a = prop(); add(ws.map((w, i) => [w, a[i]]), "по задачам дня пропорционально"); });
+  $("[data-pick]", box)?.addEventListener("click", () => { S.topupPick = S.topupPick === day.date ? null : day.date; renderTopup(); });
+  $("[data-skip]", box).onclick = () => { try { localStorage.setItem(key, "no"); } catch (e) {} box.innerHTML = ""; };
 }
 
 function editWorklog(el, w) {
@@ -1304,7 +1325,7 @@ function editWorklog(el, w) {
     <div class="acts"><button class="done">Готово</button>${w.edited ? `<button class="auto">вернуть авто ${hmm(w.auto_seconds)}</button>` : ""}
       ${w.jira_id ? `<span class="drop off" title="Уже отправлено — удалить запись можно только в самой Jira">уже в Jira</span>`
         : home ? `<button class="drop" data-merge title="Время и активности вернутся в общую запись задачи">Вернуть в общую запись</button>`
-        : `<button class="drop" title="Задача не уйдёт в Jira: её активности вернутся в «Ждут решения», запомненные правила для них сбросятся">Убрать</button>`}</div>`);
+        : `<button class="drop" title="Задача не уйдёт в Jira: её активности вернутся в «Не разобрано», запомненные правила для них сбросятся">Убрать</button>`}</div>`);
   const t = $(".tvin", el), c = $(".form textarea", el);
   const fit = () => { c.style.height = "auto"; c.style.height = c.scrollHeight + 2 + "px"; }; fit(); c.oninput = fit; c.focus();
   t.onkeydown = e => { if (e.key === "Enter") $(".done", el).click(); if (e.key === "Escape") renderStack(); };
@@ -1319,14 +1340,14 @@ function editWorklog(el, w) {
     toast(to ? "Вынесено отдельной записью — у неё своё время и комментарий" : "Вернул в общую запись задачи"); }).catch(e => toast(e.message, true));
   $("[data-merge]", el)?.addEventListener("click", () => part(home.keys, ""));
   $$(".src [data-to]", el).forEach(b => b.onclick = () => { const s = w.sources[+b.dataset.s]; part(s.keys, b.dataset.to); });
-  // Убрать одну активность: её отрезки вернутся в «Ждут решения», запомненное правило для неё сбросится.
+  // Убрать одну активность: её отрезки вернутся в «Не разобрано», запомненное правило для неё сбросится.
   $$(".src .rm", el).forEach(b => b.onclick = () => busy(b, async () => { const s = w.sources[+b.dataset.s]; let d = null;
     for (const g of S.groups || []) for (const mb of g.members.values()) {
       const bl = s.keys.includes(mb.key) ? mb.blocks.filter(x => x.issue === w.issue) : [];
       if (bl.length) d = await api("/api/assign", { issue: null, remember: true, context_key: mb.key, label: mb.label, intervals: bl.map(x => [x.start, x.end]) });
     }
     if (d) setDay(d); toast(`${s.label.replace(/^Claude Code: /, "")} — убрано из ${w.issue}, ждёт решения`); }, "…"));
-  // Задача попала сюда по ошибке: снимаем привязку со всех её активностей — они уходят в «Ждут решения», запись пропадает из стопки.
+  // Задача попала сюда по ошибке: снимаем привязку со всех её активностей — они уходят в «Не разобрано», запись пропадает из стопки.
   $("button.drop:not([data-merge])", el)?.addEventListener("click", e => busy(e.currentTarget, async () => {
     let d = null;
     for (const g of S.groups || []) for (const mb of g.members.values()) {
@@ -1335,7 +1356,7 @@ function editWorklog(el, w) {
     }
     if (w.edited) d = await api("/api/draft", { issue: w.issue, reset: true });
     if (d) setDay(d);
-    toast(S.day.proposal.worklogs.some(x => x.issue === w.issue) ? `${w.issue} осталась: часть времени пришла из «поделить между задачами»` : `${w.issue} убрана, активности ждут решения`);
+    toast(S.day.proposal.worklogs.some(x => x.issue === w.issue) ? `${w.issue} осталась: часть времени пришла из «делится по задачам»` : `${w.issue} убрана, активности вернулись в «Не разобрано»`);
   }, "Убираю…"));
 }
 
@@ -1370,10 +1391,11 @@ document.addEventListener("drop", async e => {
 $("#push").onclick = async e => { const btn = e.currentTarget;
   if (btn.dataset.mode === "connect") return openConnect();
   if (btn.dataset.mode === "add") return jiraAdd(null, S.jsRest);
+  if (btn.dataset.mode === "sort") return $(".panel.wp")?.scrollIntoView({ behavior: "smooth", block: "start" });
   const p = S.day.proposal, todo = p.worklogs.filter(w => w.status === "draft" || w.status === "changed");
   if (!todo.length) { renderStack(); return toast("Всё подготовленное уже в Jira"); }
   if (!await ask(`<h2>Залогировать в Jira?</h2><div class="sendlist">${todo.map(w => `<span class="k" style="--p:${pastel(w.issue)}">${esc(w.issue)}</span><span class="c">${esc(w.comment)}</span><b class="num">${hmm(w.seconds)}</b>`).join("")}</div>
-    ${p.unassigned >= 60 ? `<p>${dur(p.unassigned)} ждут решения и не залогируются.</p>` : ""}`, "Залогировать")) return;
+    ${p.unassigned >= 60 ? `<p>${dur(p.unassigned)} не разобрано — в Jira не уйдёт.</p>` : ""}`, "Залогировать")) return;
   busy(btn, async () => { const r = await api("/api/push", {}); setDay(r.day);
     const errs = r.results.filter(x => x.action === "error"), ok = r.results.filter(x => x.action === "create" || x.action === "update");
     if (errs.length) toast(errs.map(x => `${x.issue}: ${x.error}`).join("\n"), true); else toast(`Залогировано в Jira: ${ok.length} ${plural(ok.length, "задача", "задачи", "задач")}`); }); };
