@@ -1141,7 +1141,7 @@ function renderStack() {
   const nIss = new Set(shown.map(w => w.issue)).size, nJ = inJira.length;
   const cnt = (n, m) => `${n} ${plural(n, "задача", "задачи", "задач")}` + (m > n ? ` · ${m} ${plural(m, "запись", "записи", "записей")}` : "");
   $("#stackSub").textContent = closed ? `${nJ} ${plural(nJ, "задача", "задачи", "задач")} · день закрыт`
-    : synced ? (shown.length ? cnt(nIss, shown.length) : "Подготовленного нет") + ` · в Jira уже ${hmm(js.logged)}`
+    : synced ? (shown.length ? cnt(nIss, shown.length) : "Подготовленного нет") + (js.logged ? ` · в Jira уже ${hmm(js.logged)} из ${hmm(js.target)}` : " · в Jira за день пока пусто")
     : !wls.length ? "Здесь соберутся ворклоги" : cnt(nIss, wls.length);
   const ST = { pushed: ["в Jira", ""], in_jira: ["в Jira", ""], changed: ["изменено", "ch"] };
   const row = w => { const st = ST[w.status];
@@ -1227,8 +1227,7 @@ function renderJira() {
   const p = day.proposal, pend = p.worklogs.filter(w => w.status === "draft" || w.status === "changed"), sec = pend.reduce((s, w) => s + w.seconds, 0);
   if (js.state === "unknown") box.innerHTML = S.syncing ? `<div class="jst wait">Сверяю с Jira…</div>` : "";
   else if (js.state === "marked") box.innerHTML = `<div class="jst ok">${CHECK}День отмечен как внесённый</div>`;
-  else if (js.state === "closed" && js.target) box.innerHTML = `<div class="jst ok">${CHECK}<b>В Jira ${hmm(js.logged)}</b> — день закрыт${pend.length
-    ? `<small>Записи ниже не отправлены, но время в Jira уже есть — похоже, вы внесли его в Tempo сами. Отправлять не нужно.</small>` : ""}</div>`;
+  else if (js.state === "closed" && js.target) box.innerHTML = "";  // заголовок справа уже говорит «В Jira за день · день закрыт»
   else if (js.state === "partial" || js.state === "empty") {
     // Сначала то, что трекер уже подготовил, потом — сколько останется и куда это добавить одной записью.
     const many = sec > js.missing + 900, rest = Math.round(Math.max(0, js.missing - sec) / 900) * 900;
@@ -1240,17 +1239,12 @@ function renderJira() {
     p.worklogs.forEach(w => addC(w.issue));
     S.groups.forEach(g => addC(g.blocks.map(sugOf).find(Boolean)));
     S.jsCand = cand.slice(0, 4); S.jsRest = sortFirst ? 0 : rest; S.jsSort = sortFirst;
-    box.innerHTML = `<div class="jst need"><b>В Jira ${hmm(js.logged)} из ${hmm(js.target)}</b> · не хватает ${hmm(js.missing)}
-      ${pend.length ? `<small>Трекер подготовил ${hmm(sec)}: ${esc(pend.slice(0, 3).map(w => w.issue + " " + hmm(w.seconds)).join(", "))}${pend.length > 3 ? " и ещё " + (pend.length - 3) : ""}.`
-        + (many && js.logged ? " Это больше, чем не хватает: часть, видимо, уже внесена руками — проверьте записи." : "") + `</small>` : ""}
-      ${pend.length ? `<div class="row"><button class="pill sm dark" id="jsPush">Залогировать ${hmm(sec)}</button></div>` : ""}
-      ${sortFirst ? `<small>${hmm(p.unassigned)} ждут решения — разложите их по задачам слева, и трекер подготовит записи.</small>`
-        : rest >= 900 && S.jsCand.length ? `<small>${pend.length ? "Останется" : "Не хватает"} ${hmm(rest)} — добавить одной записью в задачу:</small>
-        <div class="row">${S.jsCand.map((k, i) => `<button class="pill sm" data-jsadd="${i}" title="${esc(summary(k))}">${esc(k)} +${hmm(rest)}</button>`).join("")}</div>` : ""}
-      <div class="row"><button class="txt sm" id="jsMark">Уже внесён</button></div></div>`;
-    $("#jsPush")?.addEventListener("click", () => $("#push").click());
-    $("#jsMark")?.addEventListener("click", () => $('[data-m="manual"]').click());
-    $$("[data-jsadd]", box).forEach(b => b.onclick = () => jiraAdd(S.jsCand[+b.dataset.jsadd], S.jsRest));
+    const have = js.logged ? `В Jira за этот день уже ${hmm(js.logged)} из ${hmm(js.target)}.` : "В Jira за этот день пока пусто.";
+    box.innerHTML = sortFirst
+      ? `<div class="jst need"><b>Сначала разложите ${hmm(p.unassigned)} в «Ждут решения»</b><small>${have} Когда разложите, трекер сам подготовит записи по задачам.</small></div>`
+      : many && js.logged
+          ? `<div class="jst need"><b>Проверьте записи</b><small>${have} Трекер подготовил ${hmm(sec)} — больше, чем не хватает: похоже, часть уже внесена руками.</small></div>`
+          : "";
   } else box.innerHTML = "";
 }
 async function jiraAdd(issue, secs) {
@@ -1282,8 +1276,7 @@ function renderTopup() {
     raw.map((r, i) => [r - add[i], i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (rest > 0) { add[i]++; rest--; } });
     return add.map(n => n * 900); };
   const byJira = jsd.state === "partial" || jsd.state === "empty";
-  if (byJira) { box.innerHTML = ""; return; }  // при сверке с Jira недостающее предлагает карточка сверки
-  box.innerHTML = `<div class="topup"><div class="tt"><b>${byJira ? "Чтобы закрыть день, не хватает" : `До ${norm / 3600} ч не хватает`} ${hmm(gap)}</b>
+  box.innerHTML = `<div class="topup"><div class="tt"><b>До нормы ${(byJira ? jsd.target : norm) === norm ? norm / 3600 + " ч" : hmm(jsd.target)} не хватает ${hmm(gap)}</b>
       <span>Трекер не видит созвоны без компьютера, обсуждения и раздумья. Добавить это время к задаче?</span></div>
     <div class="opts">${ws.map((w, i) => `<button class="opt" data-i="${i}" style="--p:${pastel(w.issue)}"><i></i><b>${esc(w.issue)}</b><span class="s">${esc(w.summary || "")}</span><span class="v">${hmm(w.seconds)} → ${hmm(w.seconds + gap)}</span></button>`).join("")}
       ${ws.length > 1 ? `<button class="opt" data-all><i></i><span class="s" style="color:inherit">По всем пропорционально</span><span class="v">+${hmm(gap)}</span></button>` : ""}</div>

@@ -145,4 +145,10 @@ if js["missing"] >= 900:
     print("после добавления:", {k: js2[k] for k in ("state", "logged", "missing")})
     assert js2["state"] == "closed" and js2["logged"] == logged0 + js["missing"], js2
     assert not remind.day_needs_review(conn, cfg, date, check_jira=False)[0]
+# Норма: рабочий день (видно хотя бы полнормы) — нужно 8 ч целиком; короткий день — сколько отработали.
+w = js["worked"]
+cfg["worklog"]["day_hours"] = w / 3600 * 1.5  # отработано 2/3 нормы — нужна норма целиком
+assert remind.jira_state(conn, cfg, date)["target"] == int(w * 1.5), remind.jira_state(conn, cfg, date)
+cfg["worklog"]["day_hours"] = w / 3600 * 3  # отработано 1/3 нормы — короткий день
+assert remind.jira_state(conn, cfg, date)["target"] == int(round(w / 900.0)) * 900
 print("OK: все проверки прошли")

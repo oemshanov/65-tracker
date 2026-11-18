@@ -55,7 +55,9 @@ def jira_state(conn, cfg, date, p=None):
     workday = date.isoweekday() in set(cfg["day"]["workdays"])
     norm = int(float(cfg["worklog"].get("day_hours") or 0) * 3600) if workday else 0
     worked = int(round(work / 900.0)) * 900 if work >= 30 * 60 else 0
-    target = min(norm, worked) if norm else worked
+    # Рабочий день (трекер видел хотя бы половину нормы) — нужна норма целиком: созвоны без компьютера, обсуждения
+    # и раздумья трекер не видит. Короткий день или выходной — сколько отработали.
+    target = norm if norm and work >= norm / 2 else worked
     out = {"logged": sum(r["seconds"] for r in rows if r["issue"] != "*"),
            "issues": {r["issue"]: r["seconds"] for r in rows if r["issue"] != "*"},
            "checked": max(r["fetched"] for r in rows) if rows else None,
