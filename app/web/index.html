@@ -748,7 +748,7 @@ async function api(path, body) {
 function jiraDown(on) {
   $("#jiraNet")?.remove(); if (!on) return;
   $("#perms").insertAdjacentHTML("afterbegin", `<div class="perm net" id="jiraNet"><div><b>Нет связи с Jira</b>
-    Jira открывается только через VPN компании. Проверьте, что VPN включён (если их несколько — что работает нужный), и нажмите «Повторить». Черновики сохранены.</div>
+    Проверьте интернет и VPN, если Jira доступна только через него, и нажмите «Повторить». Если в браузере Jira открывается, а здесь нет — укажите прокси в «Настройки → Сеть». Черновики сохранены.</div>
     <button class="pill" id="jiraRetry">Повторить</button></div>`);
   $("#jiraRetry").onclick = e => busy(e.currentTarget, async () => { await syncJira(true); toast("Связь с Jira есть"); });
 }
@@ -1455,6 +1455,9 @@ async function openSettings(focus) {
       </div></section>
     <section><h3>Рабочий день</h3>
       <div class="srow"><span>Норма в день<small>После 17:00, если залогировано меньше, предложит добавить недостающее к одной из задач</small></span><span class="seg" id="wdSeg">${[[0, "нет"], [6, "6 ч"], [7, "7 ч"], [8, "8 ч"], [9, "9 ч"]].map(([h, l]) => `<button data-h="${h}" class="${+st.day_hours === h ? "on" : ""}">${l}</button>`).join("")}</span></div></section>
+    <section><h3>Сеть</h3>
+      <div class="srow"><span>Прокси<small>Пусто — как в системных настройках macOS, обычно этого хватает. Укажите, если ваш VPN-клиент даёт локальный прокси, а Jira или обновления здесь не открываются, хотя в браузере работают. Адрес — в настройках самого клиента.</small></span>
+        <input id="nProxy" class="tinp" style="width:190px;text-align:left" placeholder="http://127.0.0.1:8080" value="${esc(st.network?.proxy || "")}" spellcheck="false"></div></section>
     <section><h3>Календари</h3>${calRows(st.calendars || [])}</section>
     <section><h3>Доступы</h3><div id="sPerm">${permRows(pm)}</div></section>
     <section><h3>Подсказки по истории Jira</h3>
@@ -1482,6 +1485,8 @@ async function openSettings(focus) {
     b.closest(".srow").querySelector("small").textContent = b.dataset.st === "notification" ? "Уведомление в углу экрана, не отвлекает" : "Окно с кнопкой «Разобрать» — сложно пропустить"; saveRem(); });
   $$("[data-cal]", B).forEach(c => c.onchange = () => api("/api/settings/calendars", { ignore: $$("[data-cal]", B).filter(x => !x.checked).map(x => x.dataset.cal) })
     .then(() => load(S.day?.date)).catch(e => toast(e.message, true)));
+  $("#nProxy", B).onchange = e => api("/api/settings/network", { proxy: e.target.value.trim() })
+    .then(() => toast(e.target.value.trim() ? "Прокси сохранён" : "Сеть — как в системе")).catch(x => toast(x.message, true));
   $("#hOn", B).onchange = e => api("/api/settings/history", { enabled: e.target.checked }).then(() => load(S.day?.date)).catch(x => toast(x.message, true));
   $("#hClear", B).onclick = e => busy(e.currentTarget, async () => { if (!await ask("<h2>Очистить историю подсказок?</h2><p>Подсказки «так вы логировали раньше» пропадут, пока трекер не посчитает прошлые дни заново.</p>", "Очистить")) return;
     await api("/api/history/clear", {}); toast("История подсказок очищена"); load(S.day?.date); });

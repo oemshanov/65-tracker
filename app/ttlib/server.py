@@ -13,7 +13,7 @@ import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import config, db, icons, jira, local_ai, report, suggest, update
+from . import config, db, icons, jira, local_ai, net, report, suggest, update
 from .context import one_time
 from .remind import day_needs_review, jira_state, sync_days
 from .segment import build_day, parse_date, parse_dur, propose
@@ -167,7 +167,7 @@ def jira_avatar(cfg):
             return None
         h = j._headers()
         h["Accept"] = "image/*"
-        with urllib.request.urlopen(urllib.request.Request(url, headers=h), timeout=10) as r:
+        with net.urlopen(urllib.request.Request(url, headers=h), cfg, timeout=10) as r:
             data = r.read()
         os.makedirs(icons.DIR, exist_ok=True)
         with open(out, "wb") as f:
@@ -362,7 +362,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(data)
                 return
             if u.path == "/api/icon":
-                path = icons.jira_icon(cfg["jira"]["base_url"]) if q.get("jira") else icons.app_icon(q.get("b"))
+                path = icons.jira_icon(cfg["jira"]["base_url"], cfg) if q.get("jira") else icons.app_icon(q.get("b"))
                 if not path:
                     self.send_response(404)
                     self.send_header("Content-Length", "0")
@@ -393,6 +393,7 @@ class Handler(BaseHTTPRequestHandler):
                     "storage": storage(conn),
                     "day_hours": cfg["worklog"].get("day_hours") or 0,
                     "calendars": calendars(conn, cfg),
+                    "network": {"proxy": net.proxy(cfg)},
                     "history": {"enabled": (cfg.get("history") or {}).get("enabled", True),
                                 "days": conn.execute("SELECT COUNT(DISTINCT date) FROM day_contexts").fetchone()[0]},
                 })
@@ -599,6 +600,12 @@ class Handler(BaseHTTPRequestHandler):
                     conn.execute("DELETE FROM event_marks WHERE uid=? AND start=?", (body["uid"], float(body["start"])))
                 conn.commit()
                 return self._json(day_payload(conn, cfg, date))
+            if path == "/api/settings/network":
+                p = (body.get("proxy") or "").strip()
+                if not net.valid_proxy(p):
+                    return self._json({"error": "Адрес прокси — вида http://127.0.0.1:8080"}, 400)
+                config.save_user({"network": {"proxy": p}})
+                return self._json({"ok": True})
             if path == "/api/settings/history":
                 config.save_user({"history": {"enabled": bool(body.get("enabled"))}})
                 return self._json({"ok": True})

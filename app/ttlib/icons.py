@@ -49,7 +49,7 @@ def app_icon(bundle):
         return _none(out)
 
 
-def jira_icon(base_url):
+def jira_icon(base_url, cfg=None):
     if not base_url:
         return None
     os.makedirs(DIR, exist_ok=True)
@@ -57,7 +57,8 @@ def jira_icon(base_url):
     if os.path.exists(out):
         return out
     try:
-        with urllib.request.urlopen(base_url.rstrip("/") + "/favicon.ico", timeout=10) as r:
+        from . import net
+        with net.urlopen(base_url.rstrip("/") + "/favicon.ico", cfg, timeout=10) as r:
             data = r.read()
         if data:
             with open(out, "wb") as f:

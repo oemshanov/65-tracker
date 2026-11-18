@@ -138,7 +138,8 @@ def _install(cfg):
         if not ollama_bin():
             os.makedirs(AI_DIR, exist_ok=True)
             tgz = os.path.join(AI_DIR, "ollama.tgz")
-            with urllib.request.urlopen(OLLAMA_URL, timeout=60) as r, open(tgz, "wb") as f:
+            from . import net
+            with net.urlopen(OLLAMA_URL, cfg, timeout=60) as r, open(tgz, "wb") as f:
                 total, done = int(r.headers.get("Content-Length") or 0), 0
                 while True:
                     chunk = r.read(1 << 16)

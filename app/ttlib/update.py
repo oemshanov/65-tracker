@@ -14,7 +14,7 @@ import time
 import urllib.error
 import urllib.request
 
-from . import config
+from . import config, net
 from .remind import collector_app
 
 DIR = os.path.join(config.SUPPORT_DIR, "update")
@@ -74,14 +74,14 @@ def check(cfg):
     req = urllib.request.Request("%s/repos/%s/releases/latest" % (_api(cfg), repo),
                                  headers={"Accept": "application/vnd.github+json", "User-Agent": "65-tracker"})
     try:
-        with urllib.request.urlopen(req, timeout=10) as r:
+        with net.urlopen(req, cfg, timeout=10) as r:
             rel = json.load(r)
     except urllib.error.HTTPError as e:
         if e.code != 404:
             return {"error": "GitHub ответил %s" % e.code}
         rel = {}
     except (OSError, ValueError):
-        return {"error": "Нет связи с GitHub"}
+        return {"error": "Нет связи с GitHub. " + net.HINT}
     dmg = next((a for a in rel.get("assets") or [] if a.get("name", "").endswith(".dmg")), {})
     data = {"checked_at": time.time(), "latest": (rel.get("tag_name") or "").lstrip("vV") or None,
             "dmg": dmg.get("browser_download_url"), "size": dmg.get("size"), "page": rel.get("html_url"),
@@ -150,9 +150,9 @@ def _set(**kw):
     JOB.update(kw)
 
 
-def _download(url, path):
+def _download(url, path, cfg=None):
     req = urllib.request.Request(url, headers={"User-Agent": "65-tracker"})
-    with urllib.request.urlopen(req, timeout=30) as r, open(path, "wb") as f:
+    with net.urlopen(req, cfg, timeout=30) as r, open(path, "wb") as f:
         total, got = int(r.headers.get("Content-Length") or 0), 0
         while True:
             chunk = r.read(1 << 16)
@@ -185,7 +185,7 @@ def _install(cfg, server_pid):
     os.makedirs(mnt)
     dmg = work + "/new.dmg"
     _set(stage="download", pct=0, version=latest)
-    _download(url, dmg)
+    _download(url, dmg, cfg)
 
     _set(stage="verify", version=latest)
     r = subprocess.run(["hdiutil", "attach", "-nobrowse", "-readonly", "-noautoopen", "-mountpoint", mnt, dmg],
