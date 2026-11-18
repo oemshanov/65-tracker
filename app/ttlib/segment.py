@@ -55,7 +55,7 @@ def assignment_key(res, ctx):
     return "ctx:" + ctx.group
 
 
-def build_day(conn, cfg, date):
+def build_day(conn, cfg, date, learn=True):
     start_hour = cfg["day"]["start_hour"]
     t0, t1 = day_bounds(date, start_hour)
     slot = cfg["segment"]["slot_min"] * 60
@@ -347,6 +347,9 @@ def build_day(conn, cfg, date):
                                  "kind": b["kind"]})
     _themes(out)
     _between(conn, out)
+    if learn:  # подсказки по вашей истории в Jira (learn=False — когда сами считаем историю)
+        from . import history
+        history.apply(conn, cfg, date, out, lambda k: resolver.issues.get(k))
     _auto_split(out, (cfg["segment"].get("auto_split_min") or 0) * 60)
     return {
         "date": date.isoformat(), "t0": t0, "t1": t1, "blocks": out, "tracked": tracked_any,

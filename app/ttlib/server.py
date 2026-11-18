@@ -264,6 +264,38 @@ def _auto_sync_issues(conn, cfg, every=12 * 3600):
     threading.Thread(target=run, daemon=True).start()
 
 
+_history_lock = threading.Lock()
+_history_at = 0.0
+
+
+def _auto_history(cfg, every=6 * 3600):
+    """Подсказки по истории: раз в несколько часов в фоне — сверка с Jira за 6 недель (одним поиском, только время
+    по задачам) и активности прошедших дней, которых ещё нет в кэше. Страница не ждёт."""
+    global _history_at
+    from . import history
+    if not history.enabled(cfg) or time.time() - _history_at < every or not jira.Jira(cfg).configured \
+            or not _history_lock.acquire(blocking=False):
+        return
+    _history_at = time.time()
+
+    def run():
+        try:
+            c = db.connect()
+            today = dt.date.today()
+            days = [today - dt.timedelta(days=i) for i in range(1, history.HORIZON_DAYS + 1)]
+            try:
+                sync_days(c, cfg, days, max_age=24 * 3600)
+            except jira.JiraError as e:
+                print("history sync: %s" % e, file=sys.stderr)
+            history.fill_cache(c, cfg, today)
+            c.close()
+        except Exception as e:
+            print("history: %s" % e, file=sys.stderr)
+        finally:
+            _history_lock.release()
+    threading.Thread(target=run, daemon=True).start()
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "tt/1"
 
@@ -361,6 +393,8 @@ class Handler(BaseHTTPRequestHandler):
                     "storage": storage(conn),
                     "day_hours": cfg["worklog"].get("day_hours") or 0,
                     "calendars": calendars(conn, cfg),
+                    "history": {"enabled": (cfg.get("history") or {}).get("enabled", True),
+                                "days": conn.execute("SELECT COUNT(DISTINCT date) FROM day_contexts").fetchone()[0]},
                 })
             if u.path == "/api/update/check":
                 c = update.check(cfg)
@@ -529,6 +563,7 @@ class Handler(BaseHTTPRequestHandler):
                 monday = date - dt.timedelta(days=date.weekday())
                 week = [monday + dt.timedelta(days=i) for i in range(7)]
                 changed = sync_days(conn, cfg, week, max_age=0 if body.get("force") else 30 * 60)
+                _auto_history(cfg)
                 return self._json({"changed": changed, "week": week_payload(conn, cfg, date),
                                    "day": day_payload(conn, cfg, date) if changed else None})
             if path == "/api/suggest":
@@ -564,6 +599,13 @@ class Handler(BaseHTTPRequestHandler):
                     conn.execute("DELETE FROM event_marks WHERE uid=? AND start=?", (body["uid"], float(body["start"])))
                 conn.commit()
                 return self._json(day_payload(conn, cfg, date))
+            if path == "/api/settings/history":
+                config.save_user({"history": {"enabled": bool(body.get("enabled"))}})
+                return self._json({"ok": True})
+            if path == "/api/history/clear":
+                conn.execute("DELETE FROM day_contexts")
+                conn.commit()
+                return self._json({"ok": True})
             if path == "/api/settings/calendars":
                 off = [c for c in body.get("ignore") or [] if isinstance(c, str)]
                 config.save_user({"collector": {"calendar_ignore": off}})

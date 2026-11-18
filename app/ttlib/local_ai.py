@@ -31,7 +31,7 @@ class LocalAIError(RuntimeError):
 
 
 def _cfg(cfg):
-    return dict({"url": "http://127.0.0.1:11434", "model": "bge-m3", "min_score": 0.55, "margin": 0.02},
+    return dict({"url": "http://127.0.0.1:11434", "model": "bge-m3", "min_score": 0.6, "margin": 0.03},
                 **(cfg["llm"].get("local") or {}))
 
 
@@ -246,6 +246,9 @@ def run(conn, cfg, date, dry_run=False):
     day = build_day(conn, cfg, date)
     # «Claude», «Видеоповтор», почта, «Untitled» сами по себе ни о чём — их ведут соседи.
     mapped = {r[0] for r in conn.execute("SELECT context_key FROM mappings")}  # в т.ч. «личное»
+    # Только то, на что подсказки нет совсем: по замеру модель, перебивая подсказки по истории и по словам,
+    # чаще ошибается, чем исправляет.
+    mapped |= {c.get("group") or c["key"] for b in day["blocks"] if b.get("hint") or b.get("suggestion") for c in b["contexts"]}
     ctxs = {k: v for k, v in unassigned_contexts(day).items()
             if v["kind"] != "app" and k not in mapped and not GENERIC.search(k) and len(context_text(v)) >= 4}
     if not ctxs:
@@ -257,6 +260,13 @@ def run(conn, cfg, date, dry_run=False):
                if not r["context_key"].startswith(("app:", "meeting:"))]  # «Телемост» ни о чём не говорит
     if not issues and not history:
         raise LocalAIError("Нет задач для сравнения — нажмите «↻ Задачи Jira»")
+    # По истории в Jira: сравниваем только с недавними задачами (по замеру со всеми подряд модель чаще промахивается)
+    # и с прошлыми активностями, которые уверенно уходили в одну задачу — «новый файл того же проекта».
+    from . import history as jira_history
+    hm = jira_history.Model(conn, cfg, date) if jira_history.enabled(cfg) else None
+    if hm and hm.recent:
+        issues = [r for r in issues if r["key"] in hm.recent] or issues
+        history += [{"label": label, "issue": issue} for label, issue in hm.examples()]
     summary = {r["key"]: r["summary"].strip() for r in issues}
     ckeys = list(ctxs)
     with Ollama(cfg) as ai:

@@ -336,6 +336,9 @@ def main(argv):
     p.add_argument("date")
     p.add_argument("status", choices=["manual", "done", "open"])
     sp.add_parser("rules", help="выученные привязки")
+    p = sp.add_parser("eval", help="замер точности подсказок на вашей истории (на копии базы, ничего не меняет)")
+    p.add_argument("--days", type=int, default=30)
+    p.add_argument("--ai", action="store_true", help="ещё и с подбором локальной нейросетью (дольше)")
     p = sp.add_parser("remind", help="проверить, есть ли что разобрать, и напомнить")
     p.add_argument("--force", action="store_true")
     p.add_argument("--mode", choices=["previous_workday", "today", "week"])
@@ -366,6 +369,11 @@ def main(argv):
     if a.cmd == "open":
         from .server import open_ui
         print(open_ui(cfg, parse_date(a.date) if a.date else None))
+        return 0
+    if a.cmd == "eval":
+        from . import evaluate
+        conn.close()
+        print(evaluate.report(evaluate.run(cfg, days=a.days, ai=a.ai)))
         return 0
     if a.cmd == "remind":
         remind.run(conn, cfg, force=a.force, mode=a.mode)

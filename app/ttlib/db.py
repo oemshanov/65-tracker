@@ -44,13 +44,15 @@ CREATE TABLE IF NOT EXISTS jira_logged(
 """
 
 
-def connect():
+def connect(path=None):
     os.makedirs(config.SUPPORT_DIR, exist_ok=True)
-    conn = sqlite3.connect(config.DB_PATH, timeout=10, check_same_thread=False)
+    conn = sqlite3.connect(path or config.DB_PATH, timeout=10, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
     conn.executescript(SCHEMA)
+    from .history import SCHEMA as HISTORY_SCHEMA
+    conn.executescript(HISTORY_SCHEMA)
     for col in ("mine INTEGER", "online TEXT"):  # mine: вы участник; online: площадка созвона по ссылке
         try:
             conn.execute("ALTER TABLE calendar_events ADD COLUMN " + col)

@@ -952,7 +952,7 @@ function renderLeft() {
     return; }
   const open = S.groups.filter(g => g.open), props = open.filter(proposal), noSug = open.length - props.length;
   let h = !open.length ? "" : `<section class="panel wp"><div class="ph"><h2>Ждут решения</h2>${open.length ? `<span class="count">${open.length} · ${hmm(open.reduce((s, g) => s + g.openSeconds, 0))}</span>` : ""}<span class="sp"></span>
-    ${noSug ? `<button class="pill sm ai" id="local" title="Нейросеть на этом Маке сравнит активности без подсказки с задачами Jira и предложит подходящие. Без интернета и токенов">${SPARK}Подобрать задачу для ${noSug} ${plural(noSug, "активности", "активностей", "активностей")}</button>` : ""}
+    ${noSug ? `<button class="pill sm ai" id="local" title="Нейросеть на этом Маке сравнит по смыслу активности без подсказки с вашими недавними задачами и прошлыми днями. Без интернета; после подбора сразу закрывается">${SPARK}Подобрать задачу для ${noSug} ${plural(noSug, "активности", "активностей", "активностей")}</button>` : ""}
     ${props.length ? `<button class="pill sm dark" id="acceptAll">Принять ${props.length} ${plural(props.length, "подсказку", "подсказки", "подсказок")}</button>` : ""}</div>`;
   if (open.length) h += `<div class="waits">${open.map(waitCard).join("")}</div></section>`;
   // Онлайн-встречи из календаря, во время которых звонка не было видно: не засчитаны, спрашиваем.
@@ -1457,6 +1457,11 @@ async function openSettings(focus) {
       <div class="srow"><span>Норма в день<small>После 17:00, если залогировано меньше, предложит добавить недостающее к одной из задач</small></span><span class="seg" id="wdSeg">${[[0, "нет"], [6, "6 ч"], [7, "7 ч"], [8, "8 ч"], [9, "9 ч"]].map(([h, l]) => `<button data-h="${h}" class="${+st.day_hours === h ? "on" : ""}">${l}</button>`).join("")}</span></div></section>
     <section><h3>Календари</h3>${calRows(st.calendars || [])}</section>
     <section><h3>Доступы</h3><div id="sPerm">${permRows(pm)}</div></section>
+    <section><h3>Подсказки по истории Jira</h3>
+      <label class="srow sw"><span>Подсказывать, как вы логировали раньше<small>Трекер сопоставляет ваши активности с тем, сколько и в какие задачи вы залогировали в Jira за прошлые дни (только время, без комментариев). Считается на этом Маке, никуда не отправляется, нейросеть не используется.</small></span>
+        <input type="checkbox" id="hOn" ${st.history?.enabled !== false ? "checked" : ""}></label>
+      <div class="srow"><span>Посчитано дней<small>Активности прошлых дней хранятся в базе трекера, как и всё остальное</small></span><span class="mut">${st.history?.days || 0}</span></div>
+      <div class="sbtns"><button class="txt sm" id="hClear">Очистить историю подсказок</button></div></section>
     <section id="sAIs"><h3>Подбор задач нейросетью</h3><div id="sAI">${aiRows(st.local)}</div></section>
     <section><h3>Хранилище</h3><div id="sStore">${storeRows(st.storage)}</div></section>
     <section id="sUpd"><h3>О приложении</h3>
@@ -1477,6 +1482,9 @@ async function openSettings(focus) {
     b.closest(".srow").querySelector("small").textContent = b.dataset.st === "notification" ? "Уведомление в углу экрана, не отвлекает" : "Окно с кнопкой «Разобрать» — сложно пропустить"; saveRem(); });
   $$("[data-cal]", B).forEach(c => c.onchange = () => api("/api/settings/calendars", { ignore: $$("[data-cal]", B).filter(x => !x.checked).map(x => x.dataset.cal) })
     .then(() => load(S.day?.date)).catch(e => toast(e.message, true)));
+  $("#hOn", B).onchange = e => api("/api/settings/history", { enabled: e.target.checked }).then(() => load(S.day?.date)).catch(x => toast(x.message, true));
+  $("#hClear", B).onclick = e => busy(e.currentTarget, async () => { if (!await ask("<h2>Очистить историю подсказок?</h2><p>Подсказки «так вы логировали раньше» пропадут, пока трекер не посчитает прошлые дни заново.</p>", "Очистить")) return;
+    await api("/api/history/clear", {}); toast("История подсказок очищена"); load(S.day?.date); });
   bindPermRows(); bindAI(); bindStore(); renderUpd(st.update || {});
   $("#uAuto", B).onchange = e => api("/api/update/auto", { on: e.currentTarget.checked }).catch(er => toast(er.message, true));
   if (focus === "update" || focus === "update-go") { $("#sUpd").scrollIntoView({ block: "center" });
